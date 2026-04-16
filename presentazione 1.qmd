@@ -62,9 +62,10 @@ Analisi e rappresentazione grafica dei flussi migratori tra le macrozone, eviden
 \begin{center}
 
 Indagine delle possibili cause della fuga di cervelli, attraverso l'analisi dei seguenti fattori socio-economici per ogni macrozona:
+
+\end{center}
+
 - Salari
 - Tassazione 
 - Costo/qualità della vita
-- Tasso di occupazione in base ai settori 
-
-\end{center}
+- Tasso di occupazione in base ai settori

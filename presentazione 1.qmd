@@ -1,0 +1,8 @@
+---
+title: "Domanda di Ricerca"
+subtitle: "Fuga di cervelli"
+author: "Gruppo G"
+date: "21 Aprile 2026"
+format: beamer
+---
+

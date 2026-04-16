@@ -7,4 +7,64 @@ format: beamer
 ---
 
 # Obiettivo principale 
-L'obiettivo di questa presentazione è analizzare il fenomeno della fuga di cervelli, identificando le cause principali.
+\begin{center}
+L'obiettivo di questa presentazione è analizzare il fenomeno della fuga di cervelli, identificando le cause principali
+\end{center}
+
+# Introduzione - Definizione
+
+\begin{center}
+
+_"Brain drain refers to the permanent emigration or outflow of skilled and talented individuals from their home regions to seek better opportunities and prospects elsewhere. (European Commission, 2023)"_
+
+\end{center}
+
+# Introduzione - Confronto con lavori precedenti
+
+\begin{center}
+
+Tesi di articoli precedenti sull'argomento:
+-
+-
+-
+
+\end{center}
+
+# Sviluppo dell'analisi - Divisione dei Paesi in macrozone
+
+\begin{center}
+L'organizzazione ...  effettua la divisione dei Paesi europei nelle seguenti macrozone:
+- Europa del nord: include Paesi nordici e baltici (es. Svezia, Finlandia, Danimarca, Estonia, Lettonia, Lituania)
+- Europa del sud: include i Paesi che si affacciano sul Mar Mediterraneo (es. Italia, Spagna, Grecia, Portogallo)
+- Europa occidentale: include i Paesi dell'Europa occidentale (es. Germania, Francia, Regno Unito, Paesi Bassi, Belgio)
+- Europa orientale: include i Paesi dell'ex blocco orientale (es. Polonia, Repubblica Ceca, Ungheria, Romania, Bulgaria)
+\end{center}
+
+# Sviluppo dell'analisi - Analisi preliminare
+
+\begin{center}
+Per ogni macrozona di effettuerà l'analisi del livello di:
+    - istruzione
+    - occupazione
+    - reddito
+    - qualità della vita
+
+\end{center}
+
+# Sviluppo dell'analisi - Flussi migratori
+
+\begin{center}
+Analisi e rappresentazione grafica dei flussi migratori tra le macrozone, evidenziando le tendenze principali e i Paesi più coinvolti nella fuga di cervelli.
+\end{center}
+
+# Sviluppo dell'analisi - Indagini delle possibili cause
+
+\begin{center}
+
+Indagine delle possibili cause della fuga di cervelli, attraverso l'analisi dei seguenti fattori socio-economici per ogni macrozona:
+- Salari
+- Tassazione 
+- Costo/qualità della vita
+- Tasso di occupazione in base ai settori 
+
+\end{center}

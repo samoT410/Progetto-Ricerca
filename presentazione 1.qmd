@@ -7,4 +7,67 @@ format: beamer
 ---
 
 # Obiettivo principale 
-L'obiettivo di questa presentazione è analizzare il fenomeno della fuga di cervelli, identificando le cause principali.
+\begin{center}
+L'obiettivo di questa presentazione è analizzare il fenomeno della fuga di cervelli, identificando le cause principali
+\end{center}
+
+# Introduzione - Definizione
+
+\begin{center}
+
+"Brain drain refers to the permanent emigration or outflow of skilled and talented individuals from their home regions to seek better opportunities and prospects elsewhere. (European Commission, 2023)"
+
+\end{center}
+
+# Introduzione - Confronto con lavori precedenti
+
+
+
+Tesi di articoli precedenti sull'argomento:
+-
+-
+-
+
+
+
+# Sviluppo dell'analisi - Divisione dei Paesi in macrozone
+
+
+\begin{center}
+La divisione statistica delle Nazioni Unite (UNSD) effettua la divisione dei Paesi europei nelle seguenti macrozone:
+\end{center}
+
+- Europa del nord: include Paesi nordici e baltici (es. Svezia, Finlandia, Danimarca, Estonia, Lettonia, Lituania)
+- Europa del sud: include i Paesi che si affacciano sul Mar Mediterraneo (es. Italia, Spagna, Grecia, Portogallo)
+- Europa occidentale: include i Paesi dell'Europa occidentale (es. Germania, Francia, Regno Unito, Paesi Bassi, Belgio)
+- Europa orientale: include i Paesi dell'ex blocco orientale (es. Polonia, Repubblica Ceca, Ungheria, Romania, Bulgaria)
+
+
+# Sviluppo dell'analisi - Analisi preliminare
+
+\begin{center}
+Per ogni macrozona di effettuerà l'analisi del livello di:
+\end{center}
+
+- istruzione
+- occupazione
+- reddito
+- qualità della vita
+
+
+
+# Sviluppo dell'analisi - Flussi migratori
+
+\begin{center}
+Analisi e rappresentazione grafica dei flussi migratori tra le macrozone, evidenziando le tendenze principali e i Paesi più coinvolti nella fuga di cervelli.
+\end{center}
+
+# Sviluppo dell'analisi - Indagini delle possibili cause
+
+\begin{center}
+Indagine delle possibili cause della fuga di cervelli, attraverso l'analisi dei seguenti fattori socio-economici per ogni macrozona:
+\end{center}
+- Salari
+- Tassazione 
+- Costo/qualità della vita
+- Tasso di occupazione in base ai settori 

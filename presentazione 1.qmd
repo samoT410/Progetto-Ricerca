@@ -6,3 +6,5 @@ date: "21 Aprile 2026"
 format: beamer
 ---
 
+# Obiettivo principale 
+L'obiettivo di questa presentazione è analizzare il fenomeno della fuga di cervelli, identificando le cause principali.

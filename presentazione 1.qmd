@@ -8,7 +8,7 @@ format: beamer
 
 # Obiettivo principale 
 \begin{center}
-L'obiettivo di questa presentazione è analizzare il fenomeno della fuga di cervelli, identificando le cause principali
+L'obiettivo di questa analisi è spiegare il fenomeno della fuga di cervelli dall'Italia verso resto dell'Europa, identificandone le cause principali
 \end{center}
 
 # Introduzione - Definizione
@@ -32,7 +32,7 @@ Tesi di articoli precedenti sull'argomento:
 
 
 
-# Sviluppo dell'analisi - Divisione dei Paesi in macrozone
+# Sviluppo dell'analisi - Divisione dei Paesi di destinazione in macrozone
 
 
 \begin{center}
@@ -61,7 +61,7 @@ Per ogni macrozona di effettuerà l'analisi del livello di:
 # Sviluppo dell'analisi - Flussi migratori
 
 \begin{center}
-Analisi e rappresentazione grafica dei flussi migratori tra le macrozone, evidenziando le tendenze principali e i Paesi più coinvolti nella fuga di cervelli.
+Analisi e rappresentazione grafica dei flussi migratori di italiani in arrivo per macrozone, evidenziando le tendenze principali e i Paesi gettonati nella fuga di cervelli.
 \end{center}
 
 # Sviluppo dell'analisi - Indagini delle possibili cause
@@ -73,3 +73,102 @@ Indagine delle possibili cause della fuga di cervelli, attraverso l'analisi dei 
 - Tassazione 
 - Costo/qualità della vita
 - Tasso di occupazione in base ai settori 
+
+\begin{center}
+Si vuole testare la significatività di questi regressori nello spiegare i flussi migratori nelle macrozone attraverso un modello di regressione lineare multipla, con i flussi migratori come variabile dipendente e i fattori socio-economici come variabili indipendenti.
+\end{center}
+
+# Dataset utilizzati - dati europei
+
+\begin{center}
+La banca dati di riferimento sarà principalmente Eurostat, per la ricerca dei dati su istruzione, occupazione, reddito e qualità della vita per i Paesi europei.
+\end{center}
+
+```{r, echo=FALSE}
+# Installazione dei pacchetti necessari
+pkgs <- c(
+    "dplyr", "tidyr", "ggplot2", "stringr", "purrr", "scales",
+    "httr", "jsonlite", "sf", "knitr", "broom",
+    "eurostat", "restatapi", "giscoR"
+    )
+
+new <- pkgs[!pkgs %in% rownames(installed.packages())]
+if (length(new)) install.packages(new)
+
+# Caricamento dei pacchetti
+for (pkg in pkgs) {
+    library(pkg, character.only = TRUE)
+}
+```
+
+
+```{r, echo=FALSE}
+# Dataset selezionati su istruzione occupazione reddito e qualità della vita
+search_education <- search_eurostat("education") 
+
+search_occupation <- search_eurostat("occupation")
+
+search_income <- search_eurostat("income by educational attainment level")
+ 
+
+search_quality_life <- search_eurostat("life")
+
+search_tax <- search_eurostat("tax")
+
+
+# Tabella riassuntiva dei dataset selezionati
+datasets_summary <- tibble(
+  `nome dataset` = c(
+    search_education$title[1],
+    search_occupation$title[1],
+    search_income$title[1],
+    search_quality_life$title[32],
+    search_tax$title[15]
+  ),
+  `codice dataset` = c(
+    search_education$code[1],
+    search_occupation$code[1],
+    search_income$code[1],
+    search_quality_life$code[32],
+    search_tax$code[15]
+  )
+)
+
+kable(datasets_summary, caption = "Tabella riassuntiva dei dataset selezionati da Eurostat")
+
+
+```
+
+
+# Dataset utilizzati - flussi migratori
+
+\begin{center}
+Per quanto riguarda i flussi migratori, si utilizzeranno i dati della banca OECD sulla migrazione internazionale, in particoalre i dati sui flussi di migranti con titolo di studio terziario in uscita dall'Italia verso i Paesi europei.
+\end{center}
+
+
+```{r, echo= FALSE}
+# Dataset OECD sui flussi migratori 2010-2011
+
+summary_df <- read.csv('imm_2010-11.csv') %>%
+  filter(country != "ITA", coub == "ITA") %>%
+  group_by(country) %>%
+  summarise(total_migrants = sum(number, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(total_migrants))
+
+tabella_2 <- tibble(summary_df, `Paese di destinazione` = case_when(
+  summary_df$country %in% c("DEU", "FRA", "GBR", "NLD", "BEL") ~ "Europa dell'ovest (include Germania)",
+  summary_df$country %in% c("SWE", "FIN", "DNK", "EST", "LVA", "LTU") ~ "Europa del nord",
+  summary_df$country %in% c("ESP", "GRC", "PRT") ~ "Europa del sud",
+  summary_df$country %in% c("POL", "CZE", "HUN", "ROU", "BGR") ~ "Europa dell'est",
+  TRUE ~ "Paesi non europei"
+)) %>%
+  group_by(`Paese di destinazione`) %>%
+  summarise(tot_migranti = sum(total_migrants, na.rm = TRUE), .groups = "drop") %>%
+  arrange(desc(tot_migranti))
+
+kable(tabella_2, caption = "Tabella riassuntiva dei flussi migratori di italiani in uscita verso i Paesi europei (2010-2011)")
+
+```
+
+

@@ -1,0 +1,26 @@
+---
+title: "Presentazione 2"
+author: "Stefano Soddu, Shakira Nassih, Giulia Parentela, Tomas Trebbi, Gaia Zanirato"
+date: today
+format:
+  beamer:
+    theme: CambridgeUS
+    colortheme: beaver
+    fonttheme: default
+    aspectratio: 169
+lang: it
+---
+
+# Obiettivo principale 
+\begin{block}{}
+\Large
+Selezionare, analizzare e sviluppare i dati del \textit{(nome del dataset)} per identificare tendenze di emigrazione e motivazioni significative che possano essere utili per comprendere come si sviluppa la fuga di cervelli dall'Italia verso i Big 5 europei e altri maggiori poli d'emigrazione nel mondo.
+\end{block}
+
+---
+
+# Obiettivo principale 
+\begin{block}{}
+\Large
+Analisi dei flussi migratori visualizzata attraverso un diagramma cartesiano che valuta le iscrizioni di residenze dall'Italia verso i paesi di considerazione.
+\end{block}

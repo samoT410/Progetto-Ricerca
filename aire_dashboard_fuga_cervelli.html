@@ -1,0 +1,201 @@
+
+<h2 class="sr-only">Dashboard ISTAT – Cittadini italiani iscritti e cancellati all'AIRE per livello di istruzione (2013–2024)</h2>
+
+<style>
+.tabs{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:6px 16px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;cursor:pointer;font-size:13px;color:var(--color-text-secondary)}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary)}
+.metric-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.9rem 1rem}
+.metric .label{font-size:12px;color:var(--color-text-secondary);margin:0 0 4px}
+.metric .val{font-size:22px;font-weight:500;margin:0;color:var(--color-text-primary)}
+.metric .sub{font-size:11px;color:var(--color-text-tertiary);margin:0}
+.chart-wrap{position:relative;width:100%}
+.section-title{font-size:14px;font-weight:500;color:var(--color-text-secondary);margin:1.5rem 0 .5rem}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;font-size:12px;color:var(--color-text-secondary)}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.select-row{display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.select-row label{font-size:13px;color:var(--color-text-secondary)}
+select{font-size:13px;padding:4px 8px}
+</style>
+
+<div style="padding:1rem 0">
+<div class="tabs">
+  <button class="tab active" onclick="showTab('trend')">Trend totale</button>
+  <button class="tab" onclick="showTab('istruzione')">Per istruzione</button>
+  <button class="tab" onclick="showTab('paese')">Per paese</button>
+  <button class="tab" onclick="showTab('saldo')">Saldo netto</button>
+</div>
+
+<div class="metric-row" id="metrics"></div>
+
+<div id="tab-trend">
+  <div class="legend">
+    <span><i style="background:#3a86c8"></i>Iscrizioni</span>
+    <span><i style="background:#e05a3a"></i>Cancellazioni</span>
+  </div>
+  <div class="chart-wrap" style="height:300px"><canvas id="cTrend" role="img" aria-label="Serie storica iscrizioni e cancellazioni AIRE 2013-2024"></canvas></div>
+</div>
+
+<div id="tab-istruzione" style="display:none">
+  <div class="select-row">
+    <label>Vista:</label>
+    <select id="selIstr" onchange="renderIstruzione()">
+      <option value="iscrizioni">Iscrizioni</option>
+      <option value="cancellazioni">Cancellazioni</option>
+    </select>
+  </div>
+  <div class="legend">
+    <span><i style="background:#888"></i>Basso</span>
+    <span><i style="background:#3a86c8"></i>Medio</span>
+    <span><i style="background:#e05a3a"></i>Alto (laureati)</span>
+  </div>
+  <div class="chart-wrap" style="height:300px"><canvas id="cIstruzione" role="img" aria-label="Iscrizioni per livello di istruzione 2013-2024"></canvas></div>
+  <p class="section-title">% laureat* sul totale per anno</p>
+  <div class="chart-wrap" style="height:160px"><canvas id="cPct" role="img" aria-label="Percentuale laureati sul totale"></canvas></div>
+</div>
+
+<div id="tab-paese" style="display:none">
+  <div class="select-row">
+    <label>Vista:</label>
+    <select id="selPaese" onchange="renderPaese()">
+      <option value="iscrizioni">Iscrizioni</option>
+      <option value="cancellazioni">Cancellazioni</option>
+    </select>
+    <label>Anno:</label>
+    <select id="selAnno" onchange="renderPaese()"></select>
+  </div>
+  <div class="chart-wrap" id="paeseWrap" style="height:400px"><canvas id="cPaese" role="img" aria-label="Emigrati per paese di destinazione"></canvas></div>
+</div>
+
+<div id="tab-saldo" style="display:none">
+  <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 .75rem">Saldo = Iscrizioni − Cancellazioni (quota "alto" istruzione). Valori negativi = più rientri che partenze.</p>
+  <div class="legend">
+    <span><i style="background:#3a86c8"></i>Saldo positivo (più partenze)</span>
+    <span><i style="background:#e05a3a"></i>Saldo negativo (più rientri)</span>
+  </div>
+  <div class="chart-wrap" style="height:300px"><canvas id="cSaldo" role="img" aria-label="Saldo netto laureati per anno"></canvas"></div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const RAW = {"iscrizioni":[{"paese":"Germania","anno":2013,"basso":2565.0,"medio":925.0,"alto":642.0,"totale":4132.0},{"paese":"Germania","anno":2014,"basso":2263.0,"medio":773.0,"alto":735.0,"totale":3771.0},{"paese":"Germania","anno":2015,"basso":1872.0,"medio":871.0,"alto":819.0,"totale":3562.0},{"paese":"Germania","anno":2016,"basso":2509.0,"medio":1081.0,"alto":1026.0,"totale":4616.0},{"paese":"Germania","anno":2017,"basso":2359.0,"medio":1139.0,"alto":1234.0,"totale":4732.0},{"paese":"Germania","anno":2018,"basso":2713.0,"medio":1318.0,"alto":1379.0,"totale":5410.0},{"paese":"Germania","anno":2019,"basso":3076.0,"medio":1108.0,"alto":705.0,"totale":4889.0},{"paese":"Germania","anno":2020,"basso":4306.0,"medio":2089.0,"alto":1300.0,"totale":7695.0},{"paese":"Germania","anno":2021,"basso":5470.0,"medio":2706.0,"alto":1874.0,"totale":10050.0},{"paese":"Germania","anno":2022,"basso":6523.0,"medio":3415.0,"alto":2111.0,"totale":12049.0},{"paese":"Germania","anno":2023,"basso":4806.0,"medio":2629.0,"alto":1808.0,"totale":9243.0},{"paese":"Germania","anno":2024,"basso":4618.0,"medio":2551.0,"alto":1715.0,"totale":8884.0},{"paese":"Regno Unito","anno":2013,"basso":889.0,"medio":555.0,"alto":708.0,"totale":2152.0},{"paese":"Regno Unito","anno":2014,"basso":938.0,"medio":601.0,"alto":859.0,"totale":2398.0},{"paese":"Regno Unito","anno":2015,"basso":980.0,"medio":602.0,"alto":891.0,"totale":2473.0},{"paese":"Regno Unito","anno":2016,"basso":1180.0,"medio":901.0,"alto":1282.0,"totale":3363.0},{"paese":"Regno Unito","anno":2017,"basso":1402.0,"medio":993.0,"alto":1685.0,"totale":4080.0},{"paese":"Regno Unito","anno":2018,"basso":1593.0,"medio":1150.0,"alto":1925.0,"totale":4668.0},{"paese":"Regno Unito","anno":2019,"basso":1399.0,"medio":1101.0,"alto":1334.0,"totale":3834.0},{"paese":"Regno Unito","anno":2020,"basso":3595.0,"medio":2948.0,"alto":3009.0,"totale":9552.0},{"paese":"Regno Unito","anno":2021,"basso":3346.0,"medio":3056.0,"alto":3772.0,"totale":10174.0},{"paese":"Regno Unito","anno":2022,"basso":3659.0,"medio":3125.0,"alto":3051.0,"totale":9835.0},{"paese":"Regno Unito","anno":2023,"basso":2809.0,"medio":2499.0,"alto":2698.0,"totale":8006.0},{"paese":"Regno Unito","anno":2024,"basso":2307.0,"medio":2193.0,"alto":2225.0,"totale":6725.0},{"paese":"Svizzera","anno":2013,"basso":1558.0,"medio":588.0,"alto":479.0,"totale":2625.0},{"paese":"Svizzera","anno":2014,"basso":1438.0,"medio":527.0,"alto":565.0,"totale":2530.0},{"paese":"Svizzera","anno":2015,"basso":1389.0,"medio":694.0,"alto":723.0,"totale":2806.0},{"paese":"Svizzera","anno":2016,"basso":1615.0,"medio":897.0,"alto":838.0,"totale":3350.0},{"paese":"Svizzera","anno":2017,"basso":1750.0,"medio":907.0,"alto":1006.0,"totale":3663.0},{"paese":"Svizzera","anno":2018,"basso":1924.0,"medio":1137.0,"alto":1168.0,"totale":4229.0},{"paese":"Svizzera","anno":2019,"basso":1734.0,"medio":918.0,"alto":662.0,"totale":3314.0},{"paese":"Svizzera","anno":2020,"basso":2309.0,"medio":1422.0,"alto":1051.0,"totale":4782.0},{"paese":"Svizzera","anno":2021,"basso":2498.0,"medio":1558.0,"alto":1191.0,"totale":5247.0},{"paese":"Svizzera","anno":2022,"basso":2746.0,"medio":1818.0,"alto":1278.0,"totale":5842.0},{"paese":"Svizzera","anno":2023,"basso":2182.0,"medio":1536.0,"alto":1137.0,"totale":4855.0},{"paese":"Svizzera","anno":2024,"basso":2148.0,"medio":1554.0,"alto":1116.0,"totale":4818.0},{"paese":"Brasile","anno":2013,"basso":800.0,"medio":529.0,"alto":372.0,"totale":1701.0},{"paese":"Brasile","anno":2014,"basso":985.0,"medio":463.0,"alto":521.0,"totale":1969.0},{"paese":"Brasile","anno":2015,"basso":1221.0,"medio":776.0,"alto":726.0,"totale":2723.0},{"paese":"Brasile","anno":2016,"basso":1929.0,"medio":1232.0,"alto":1447.0,"totale":4608.0},{"paese":"Brasile","anno":2017,"basso":1921.0,"medio":1211.0,"alto":1397.0,"totale":4529.0},{"paese":"Brasile","anno":2018,"basso":2473.0,"medio":1577.0,"alto":1892.0,"totale":5942.0},{"paese":"Brasile","anno":2019,"basso":4080.0,"medio":1878.0,"alto":1379.0,"totale":7337.0},{"paese":"Brasile","anno":2020,"basso":1388.0,"medio":725.0,"alto":420.0,"totale":2533.0},{"paese":"Brasile","anno":2021,"basso":1429.0,"medio":752.0,"alto":459.0,"totale":2640.0},{"paese":"Brasile","anno":2022,"basso":2142.0,"medio":1156.0,"alto":625.0,"totale":3923.0},{"paese":"Brasile","anno":2023,"basso":2192.0,"medio":1083.0,"alto":504.0,"totale":3779.0},{"paese":"Brasile","anno":2024,"basso":2215.0,"medio":1075.0,"alto":543.0,"totale":3833.0},{"paese":"Francia","anno":2013,"basso":873.0,"medio":424.0,"alto":438.0,"totale":1735.0},{"paese":"Francia","anno":2014,"basso":928.0,"medio":435.0,"alto":557.0,"totale":1920.0},{"paese":"Francia","anno":2015,"basso":830.0,"medio":459.0,"alto":555.0,"totale":1844.0},{"paese":"Francia","anno":2016,"basso":919.0,"medio":505.0,"alto":659.0,"totale":2083.0},{"paese":"Francia","anno":2017,"basso":943.0,"medio":488.0,"alto":655.0,"totale":2086.0},{"paese":"Francia","anno":2018,"basso":1018.0,"medio":570.0,"alto":736.0,"totale":2324.0},{"paese":"Francia","anno":2019,"basso":942.0,"medio":522.0,"alto":573.0,"totale":2037.0},{"paese":"Francia","anno":2020,"basso":1469.0,"medio":880.0,"alto":948.0,"totale":3297.0},{"paese":"Francia","anno":2021,"basso":1673.0,"medio":1049.0,"alto":1203.0,"totale":3925.0},{"paese":"Francia","anno":2022,"basso":1925.0,"medio":1179.0,"alto":1170.0,"totale":4274.0},{"paese":"Francia","anno":2023,"basso":1535.0,"medio":1009.0,"alto":1015.0,"totale":3559.0},{"paese":"Francia","anno":2024,"basso":1615.0,"medio":982.0,"alto":1003.0,"totale":3600.0},{"paese":"Stati Uniti d'America","anno":2013,"basso":1092.0,"medio":418.0,"alto":616.0,"totale":2126.0},{"paese":"Stati Uniti d'America","anno":2014,"basso":998.0,"medio":453.0,"alto":658.0,"totale":2109.0},{"paese":"Stati Uniti d'America","anno":2015,"basso":855.0,"medio":449.0,"alto":536.0,"totale":1840.0},{"paese":"Stati Uniti d'America","anno":2016,"basso":929.0,"medio":450.0,"alto":653.0,"totale":2032.0},{"paese":"Stati Uniti d'America","anno":2017,"basso":908.0,"medio":512.0,"alto":714.0,"totale":2134.0},{"paese":"Stati Uniti d'America","anno":2018,"basso":1116.0,"medio":534.0,"alto":816.0,"totale":2466.0},{"paese":"Stati Uniti d'America","anno":2019,"basso":964.0,"medio":427.0,"alto":524.0,"totale":1915.0},{"paese":"Stati Uniti d'America","anno":2020,"basso":1575.0,"medio":871.0,"alto":989.0,"totale":3435.0},{"paese":"Stati Uniti d'America","anno":2021,"basso":1598.0,"medio":871.0,"alto":971.0,"totale":3440.0},{"paese":"Stati Uniti d'America","anno":2022,"basso":1790.0,"medio":1046.0,"alto":934.0,"totale":3770.0},{"paese":"Stati Uniti d'America","anno":2023,"basso":1453.0,"medio":938.0,"alto":904.0,"totale":3295.0},{"paese":"Stati Uniti d'America","anno":2024,"basso":1517.0,"medio":995.0,"alto":918.0,"totale":3430.0},{"paese":"Spagna","anno":2013,"basso":690.0,"medio":376.0,"alto":349.0,"totale":1415.0},{"paese":"Spagna","anno":2014,"basso":641.0,"medio":355.0,"alto":371.0,"totale":1367.0},{"paese":"Spagna","anno":2015,"basso":543.0,"medio":274.0,"alto":288.0,"totale":1105.0},{"paese":"Spagna","anno":2016,"basso":582.0,"medio":305.0,"alto":339.0,"totale":1226.0},{"paese":"Spagna","anno":2017,"basso":598.0,"medio":362.0,"alto":316.0,"totale":1276.0},{"paese":"Spagna","anno":2018,"basso":654.0,"medio":398.0,"alto":483.0,"totale":1535.0},{"paese":"Spagna","anno":2019,"basso":760.0,"medio":491.0,"alto":418.0,"totale":1669.0},{"paese":"Spagna","anno":2020,"basso":1347.0,"medio":914.0,"alto":717.0,"totale":2978.0},{"paese":"Spagna","anno":2021,"basso":1442.0,"medio":1027.0,"alto":842.0,"totale":3311.0},{"paese":"Spagna","anno":2022,"basso":1328.0,"medio":967.0,"alto":762.0,"totale":3057.0},{"paese":"Spagna","anno":2023,"basso":1024.0,"medio":836.0,"alto":798.0,"totale":2658.0},{"paese":"Spagna","anno":2024,"basso":957.0,"medio":858.0,"alto":780.0,"totale":2595.0},{"paese":"Altri paesi","anno":2013,"basso":4052.0,"medio":1669.0,"alto":1503.0,"totale":7224.0},{"paese":"Altri paesi","anno":2014,"basso":4085.0,"medio":1619.0,"alto":1669.0,"totale":7373.0},{"paese":"Altri paesi","anno":2015,"basso":3794.0,"medio":1915.0,"alto":1752.0,"totale":7461.0},{"paese":"Altri paesi","anno":2016,"basso":4523.0,"medio":2121.0,"alto":2152.0,"totale":8796.0},{"paese":"Altri paesi","anno":2017,"basso":4990.0,"medio":2673.0,"alto":2833.0,"totale":10496.0},{"paese":"Altri paesi","anno":2018,"basso":4620.0,"medio":2254.0,"alto":2487.0,"totale":9361.0},{"paese":"Altri paesi","anno":2019,"basso":11302.0,"medio":6565.0,"alto":4999.0,"totale":22866.0},{"paese":"Altri paesi","anno":2020,"basso":5491.0,"medio":3011.0,"alto":2572.0,"totale":11074.0},{"paese":"Altri paesi","anno":2021,"basso":10496.0,"medio":5756.0,"alto":3979.0,"totale":20231.0},{"paese":"Altri paesi","anno":2022,"basso":7978.0,"medio":4658.0,"alto":3460.0,"totale":16096.0},{"paese":"Altri paesi","anno":2023,"basso":6104.0,"medio":3746.0,"alto":3079.0,"totale":12929.0},{"paese":"Altri paesi","anno":2024,"basso":6029.0,"medio":3309.0,"alto":2877.0,"totale":12215.0},{"paese":"Totale","anno":2013,"basso":15279.0,"medio":6790.0,"alto":6364.0,"totale":28433.0},{"paese":"Totale","anno":2014,"basso":15158.0,"medio":6611.0,"alto":7502.0,"totale":29271.0},{"paese":"Totale","anno":2015,"basso":14394.0,"medio":7657.0,"alto":8001.0,"totale":30052.0},{"paese":"Totale","anno":2016,"basso":17692.0,"medio":9425.0,"alto":10777.0,"totale":37894.0},{"paese":"Totale","anno":2017,"basso":18997.0,"medio":10614.0,"alto":12758.0,"totale":42369.0},{"paese":"Totale","anno":2018,"basso":20966.0,"medio":11803.0,"alto":14055.0,"totale":46824.0},{"paese":"Totale","anno":2019,"basso":34406.0,"medio":18784.0,"alto":15017.0,"totale":68207.0},{"paese":"Totale","anno":2020,"basso":26252.0,"medio":15811.0,"alto":13697.0,"totale":55760.0},{"paese":"Totale","anno":2021,"basso":35500.0,"medio":21321.0,"alto":17938.0,"totale":74759.0},{"paese":"Totale","anno":2022,"basso":35549.0,"medio":21957.0,"alto":16984.0,"totale":74490.0},{"paese":"Totale","anno":2023,"basso":28029.0,"medio":18158.0,"alto":15099.0,"totale":61286.0},{"paese":"Totale","anno":2024,"basso":26920.0,"medio":17355.0,"alto":14193.0,"totale":58468.0}],"cancellazioni":[{"paese":"Regno Unito","anno":2013,"basso":5423.0,"medio":4115.0,"alto":3424.0,"totale":12962.0},{"paese":"Regno Unito","anno":2014,"basso":6749.0,"medio":3572.0,"alto":3170.0,"totale":13491.0},{"paese":"Regno Unito","anno":2015,"basso":8537.0,"medio":4834.0,"alto":4131.0,"totale":17502.0},{"paese":"Regno Unito","anno":2016,"basso":12059.0,"medio":7068.0,"alto":5661.0,"totale":24788.0},{"paese":"Regno Unito","anno":2017,"basso":9824.0,"medio":5970.0,"alto":4799.0,"totale":20593.0},{"paese":"Regno Unito","anno":2018,"basso":10248.0,"medio":5697.0,"alto":4601.0,"totale":20546.0},{"paese":"Regno Unito","anno":2019,"basso":14877.0,"medio":8629.0,"alto":7097.0,"totale":30603.0},{"paese":"Regno Unito","anno":2020,"basso":16390.0,"medio":11856.0,"alto":7869.0,"totale":36115.0},{"paese":"Regno Unito","anno":2021,"basso":10244.0,"medio":7643.0,"alto":4692.0,"totale":22579.0},{"paese":"Regno Unito","anno":2022,"basso":6908.0,"medio":5778.0,"alto":4377.0,"totale":17063.0},{"paese":"Regno Unito","anno":2023,"basso":6047.0,"medio":5709.0,"alto":4377.0,"totale":16133.0},{"paese":"Regno Unito","anno":2024,"basso":5627.0,"medio":7833.0,"alto":4696.0,"totale":18156.0},{"paese":"Germania","anno":2013,"basso":6091.0,"medio":3324.0,"alto":2026.0,"totale":11441.0},{"paese":"Germania","anno":2014,"basso":8465.0,"medio":3416.0,"alto":2559.0,"totale":14440.0},{"paese":"Germania","anno":2015,"basso":9178.0,"medio":4668.0,"alto":3453.0,"totale":17299.0},{"paese":"Germania","anno":2016,"basso":9899.0,"medio":5283.0,"alto":3751.0,"totale":18933.0},{"paese":"Germania","anno":2017,"basso":9526.0,"medio":5294.0,"alto":3704.0,"totale":18524.0},{"paese":"Germania","anno":2018,"basso":9034.0,"medio":5188.0,"alto":3832.0,"totale":18054.0},{"paese":"Germania","anno":2019,"basso":10880.0,"medio":4864.0,"alto":3093.0,"totale":18837.0},{"paese":"Germania","anno":2020,"basso":7663.0,"medio":5323.0,"alto":3672.0,"totale":16658.0},{"paese":"Germania","anno":2021,"basso":6376.0,"medio":4151.0,"alto":3159.0,"totale":13686.0},{"paese":"Germania","anno":2022,"basso":5832.0,"medio":4433.0,"alto":3934.0,"totale":14199.0},{"paese":"Germania","anno":2023,"basso":5511.0,"medio":4725.0,"alto":4417.0,"totale":14653.0},{"paese":"Germania","anno":2024,"basso":7380.0,"medio":7099.0,"alto":5393.0,"totale":19872.0},{"paese":"Francia","anno":2013,"basso":4165.0,"medio":2153.0,"alto":1658.0,"totale":7976.0},{"paese":"Francia","anno":2014,"basso":4854.0,"medio":1948.0,"alto":1624.0,"totale":8426.0},{"paese":"Francia","anno":2015,"basso":6080.0,"medio":2615.0,"alto":2177.0,"totale":10872.0},{"paese":"Francia","anno":2016,"basso":6155.0,"medio":2638.0,"alto":2040.0,"totale":10833.0},{"paese":"Francia","anno":2017,"basso":7117.0,"medio":2962.0,"alto":2343.0,"totale":12422.0},{"paese":"Francia","anno":2018,"basso":7591.0,"medio":3251.0,"alto":2695.0,"totale":13537.0},{"paese":"Francia","anno":2019,"basso":7815.0,"medio":2621.0,"alto":2403.0,"totale":12839.0},{"paese":"Francia","anno":2020,"basso":6801.0,"medio":3509.0,"alto":2735.0,"totale":13045.0},{"paese":"Francia","anno":2021,"basso":6051.0,"medio":2863.0,"alto":2315.0,"totale":11229.0},{"paese":"Francia","anno":2022,"basso":4927.0,"medio":2874.0,"alto":2838.0,"totale":10639.0},{"paese":"Francia","anno":2023,"basso":4254.0,"medio":2790.0,"alto":3089.0,"totale":10133.0},{"paese":"Francia","anno":2024,"basso":4215.0,"medio":3652.0,"alto":3625.0,"totale":11492.0},{"paese":"Svizzera","anno":2013,"basso":4445.0,"medio":3000.0,"alto":2427.0,"totale":9872.0},{"paese":"Svizzera","anno":2014,"basso":5238.0,"medio":2741.0,"alto":2397.0,"totale":10376.0},{"paese":"Svizzera","anno":2015,"basso":5524.0,"medio":3300.0,"alto":2652.0,"totale":11476.0},{"paese":"Svizzera","anno":2016,"basso":5397.0,"medio":3367.0,"alto":2624.0,"totale":11388.0},{"paese":"Svizzera","anno":2017,"basso":5059.0,"medio":3046.0,"alto":2393.0,"totale":10498.0},{"paese":"Svizzera","anno":2018,"basso":4727.0,"medio":2740.0,"alto":2336.0,"totale":9803.0},{"paese":"Svizzera","anno":2019,"basso":5261.0,"medio":2790.0,"alto":2127.0,"totale":10178.0},{"paese":"Svizzera","anno":2020,"basso":3774.0,"medio":3384.0,"alto":2605.0,"totale":9763.0},{"paese":"Svizzera","anno":2021,"basso":3270.0,"medio":2932.0,"alto":2433.0,"totale":8635.0},{"paese":"Svizzera","anno":2022,"basso":3433.0,"medio":3296.0,"alto":3079.0,"totale":9808.0},{"paese":"Svizzera","anno":2023,"basso":4049.0,"medio":4169.0,"alto":3874.0,"totale":12092.0},{"paese":"Svizzera","anno":2024,"basso":4640.0,"medio":5626.0,"alto":4206.0,"totale":14472.0},{"paese":"Spagna","anno":2013,"basso":1662.0,"medio":1269.0,"alto":1030.0,"totale":3961.0},{"paese":"Spagna","anno":2014,"basso":1923.0,"medio":1160.0,"alto":1007.0,"totale":4090.0},{"paese":"Spagna","anno":2015,"basso":1874.0,"medio":1392.0,"alto":1062.0,"totale":4328.0},{"paese":"Spagna","anno":2016,"basso":2428.0,"medio":1747.0,"alto":1357.0,"totale":5532.0},{"paese":"Spagna","anno":2017,"basso":3179.0,"medio":2254.0,"alto":1732.0,"totale":7165.0},{"paese":"Spagna","anno":2018,"basso":3031.0,"medio":2343.0,"alto":1853.0,"totale":7227.0},{"paese":"Spagna","anno":2019,"basso":2412.0,"medio":1924.0,"alto":1764.0,"totale":6100.0},{"paese":"Spagna","anno":2020,"basso":2064.0,"medio":2078.0,"alto":1849.0,"totale":5991.0},{"paese":"Spagna","anno":2021,"basso":2132.0,"medio":2172.0,"alto":1723.0,"totale":6027.0},{"paese":"Spagna","anno":2022,"basso":2194.0,"medio":2301.0,"alto":2047.0,"totale":6542.0},{"paese":"Spagna","anno":2023,"basso":3309.0,"medio":3418.0,"alto":3284.0,"totale":10011.0},{"paese":"Spagna","anno":2024,"basso":4696.0,"medio":6762.0,"alto":5588.0,"totale":17046.0},{"paese":"Totale","anno":2013,"basso":38059.0,"medio":24515.0,"alto":19521.0,"totale":82095.0},{"paese":"Totale","anno":2014,"basso":45826.0,"medio":22812.0,"alto":20221.0,"totale":88859.0},{"paese":"Totale","anno":2015,"basso":49600.0,"medio":28569.0,"alto":24090.0,"totale":102259.0},{"paese":"Totale","anno":2016,"basso":55104.0,"medio":32774.0,"alto":26634.0,"totale":114512.0},{"paese":"Totale","anno":2017,"basso":54290.0,"medio":32591.0,"alto":27678.0,"totale":114559.0},{"paese":"Totale","anno":2018,"basso":54482.0,"medio":33004.0,"alto":29246.0,"totale":116732.0},{"paese":"Totale","anno":2019,"basso":59971.0,"medio":32408.0,"alto":29641.0,"totale":122020.0},{"paese":"Totale","anno":2020,"basso":50321.0,"medio":39397.0,"alto":31232.0,"totale":120950.0},{"paese":"Totale","anno":2021,"basso":38792.0,"medio":30538.0,"alto":24889.0,"totale":94219.0},{"paese":"Totale","anno":2022,"basso":36629.0,"medio":32311.0,"alto":30570.0,"totale":99510.0},{"paese":"Totale","anno":2023,"basso":39025.0,"medio":37918.0,"alto":37114.0,"totale":114057.0},{"paese":"Totale","anno":2024,"basso":43126.0,"medio":53234.0,"alto":44696.0,"totale":141056.0}]};
+
+const ANNI = [2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024];
+const PAESI_PRINC = ['Germania','Regno Unito','Svizzera','Francia','Spagna','Brasile',"Stati Uniti d'America"];
+
+function getTotale(dataset, anno){ return dataset.find(d=>d.paese==='Totale'&&d.anno===anno); }
+function fmtN(n){ return Math.round(n).toLocaleString('it-IT'); }
+
+function buildMetrics(){
+  const iLast = getTotale(RAW.iscrizioni,2024);
+  const cLast = getTotale(RAW.cancellazioni,2024);
+  const iFirst = getTotale(RAW.iscrizioni,2013);
+  const pct2024 = Math.round(iLast.alto/iLast.totale*100);
+  const saldo = iLast.alto - cLast.alto;
+  const d = document.getElementById('metrics');
+  d.innerHTML=`
+    <div class="metric"><p class="label">Iscrizioni 2024</p><p class="val">${fmtN(iLast.totale)}</p><p class="sub">+${Math.round((iLast.totale/iFirst.totale-1)*100)}% dal 2013</p></div>
+    <div class="metric"><p class="label">Cancellazioni 2024</p><p class="val">${fmtN(cLast.totale)}</p><p class="sub">residenti dall'estero tornati</p></div>
+    <div class="metric"><p class="label">Laureati in partenza 2024</p><p class="val">${fmtN(iLast.alto)}</p><p class="sub">${pct2024}% del totale iscrizioni</p></div>
+    <div class="metric"><p class="label">Saldo laureati 2024</p><p class="val" style="color:${saldo>0?'#e05a3a':'#3a86c8'}">${saldo>0?'+':''}${fmtN(saldo)}</p><p class="sub">${saldo>0?'più partenze':'più rientri'}</p></div>
+  `;
+}
+
+let charts={};
+function destroyChart(id){ if(charts[id]){charts[id].destroy();delete charts[id];} }
+
+function renderTrend(){
+  destroyChart('cTrend');
+  const iData = ANNI.map(a=>getTotale(RAW.iscrizioni,a).totale);
+  const cData = ANNI.map(a=>getTotale(RAW.cancellazioni,a).totale);
+  charts['cTrend']=new Chart(document.getElementById('cTrend'),{
+    type:'line',
+    data:{labels:ANNI,datasets:[
+      {label:'Iscrizioni',data:iData,borderColor:'#3a86c8',backgroundColor:'rgba(58,134,200,.08)',tension:.3,fill:true,pointRadius:3},
+      {label:'Cancellazioni',data:cData,borderColor:'#e05a3a',backgroundColor:'rgba(224,90,58,.08)',tension:.3,fill:true,pointRadius:3,borderDash:[5,3]}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtN(c.raw)}}},scales:{y:{ticks:{callback:v=>fmtN(v)},grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}}
+  });
+}
+
+function renderIstruzione(){
+  destroyChart('cIstruzione'); destroyChart('cPct');
+  const tipo = document.getElementById('selIstr').value;
+  const src = RAW[tipo];
+  const basso=ANNI.map(a=>src.find(d=>d.paese==='Totale'&&d.anno===a).basso);
+  const medio=ANNI.map(a=>src.find(d=>d.paese==='Totale'&&d.anno===a).medio);
+  const alto=ANNI.map(a=>src.find(d=>d.paese==='Totale'&&d.anno===a).alto);
+  charts['cIstruzione']=new Chart(document.getElementById('cIstruzione'),{
+    type:'bar',
+    data:{labels:ANNI,datasets:[
+      {label:'Basso',data:basso,backgroundColor:'#aaa',stack:'s'},
+      {label:'Medio',data:medio,backgroundColor:'#3a86c8',stack:'s'},
+      {label:'Alto (laureati)',data:alto,backgroundColor:'#e05a3a',stack:'s'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtN(c.raw)}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmtN(v)},grid:{color:'rgba(0,0,0,.06)'}}}}
+  });
+  const pctAlto=ANNI.map(a=>{const r=src.find(d=>d.paese==='Totale'&&d.anno===a); return Math.round(r.alto/r.totale*100*10)/10;});
+  charts['cPct']=new Chart(document.getElementById('cPct'),{
+    type:'line',
+    data:{labels:ANNI,datasets:[{label:'% laureati',data:pctAlto,borderColor:'#e05a3a',backgroundColor:'rgba(224,90,58,.08)',tension:.3,fill:true,pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+'%'}}},scales:{y:{min:0,max:40,ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}}
+  });
+}
+
+function renderPaese(){
+  destroyChart('cPaese');
+  const tipo = document.getElementById('selPaese').value;
+  const anno = +document.getElementById('selAnno').value;
+  const src = RAW[tipo];
+  const rows = src.filter(d=>PAESI_PRINC.includes(d.paese)&&d.anno===anno).sort((a,b)=>b.totale-a.totale);
+  const labels=rows.map(d=>d.paese);
+  const nBar=labels.length;
+  document.getElementById('paeseWrap').style.height=(nBar*52+80)+'px';
+  charts['cPaese']=new Chart(document.getElementById('cPaese'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Basso',data:rows.map(d=>d.basso),backgroundColor:'#aaa',stack:'s'},
+      {label:'Medio',data:rows.map(d=>d.medio),backgroundColor:'#3a86c8',stack:'s'},
+      {label:'Alto',data:rows.map(d=>d.alto),backgroundColor:'#e05a3a',stack:'s'}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtN(c.raw)}}},scales:{x:{stacked:true,ticks:{callback:v=>fmtN(v)},grid:{color:'rgba(0,0,0,.06)'}},y:{stacked:true,grid:{display:false}}}}
+  });
+}
+
+function renderSaldo(){
+  destroyChart('cSaldo');
+  const saldi=ANNI.map(a=>{
+    const i=getTotale(RAW.iscrizioni,a); const c=getTotale(RAW.cancellazioni,a);
+    return i.alto-c.alto;
+  });
+  const colors=saldi.map(v=>v>=0?'rgba(58,134,200,.7)':'rgba(224,90,58,.7)');
+  charts['cSaldo']=new Chart(document.getElementById('cSaldo'),{
+    type:'bar',
+    data:{labels:ANNI,datasets:[{label:'Saldo laureati',data:saldi,backgroundColor:colors}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.raw>=0?'+':'')+fmtN(c.raw)}}},scales:{y:{ticks:{callback:v=>(v>=0?'+':'')+fmtN(v)},grid:{color:'rgba(0,0,0,.06)'}},x:{grid:{display:false}}}}
+  });
+}
+
+function showTab(name){
+  ['trend','istruzione','paese','saldo'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===name?'block':'none';
+  });
+  document.querySelectorAll('.tab').forEach((b,i)=>{
+    b.classList.toggle('active',['trend','istruzione','paese','saldo'][i]===name);
+  });
+  if(name==='trend') renderTrend();
+  else if(name==='istruzione') renderIstruzione();
+  else if(name==='paese') renderPaese();
+  else if(name==='saldo') renderSaldo();
+}
+
+const sel=document.getElementById('selAnno');
+ANNI.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;sel.appendChild(o);});
+sel.value=2024;
+
+buildMetrics();
+renderTrend();
+</script>

@@ -1,6 +1,6 @@
 ---
 title: "Presentazione 2"
-author: "Stefano Soddu, Shakira Nassih, Giulia Parentela, Tomas Trebbi, Gaia Zanirato"
+author: "Soddu, Nassih, Parentela, Trebbi, Zanirato"
 date: today
 format:
   beamer:

@@ -119,3 +119,85 @@ ggplot(df_plot, aes(x = `Country.or.Area`, y = Year)) +
     fill = "Valore %"
   )
 ```
+
+
+# da qui va aggiunto a codice 1
+
+```{r}
+library(tidyverse)
+
+# 1. Caricamento (usiamo check.names=FALSE per mantenere gli spazi nei nomi colonne)
+df1 <- read.csv("Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv", 
+                check.names = FALSE, 
+                na.strings = "..")
+
+# Funzione di filtraggio e pulizia
+prepara_tabella <- function(data, codice_indicatore) {
+  data %>%
+    # Usiamo trimws per rimuovere eventuali spazi bianchi invisibili
+    filter(trimws(`Series Code`) == codice_indicatore) %>%
+    select(`Country Name`, starts_with("20")) %>%
+    # Puliamo i nomi delle colonne anni (es. "2013 [YR2013]" -> "2013")
+    rename_with(~str_extract(., "\\d{4}"), starts_with("20"))
+}
+
+# 2. Creazione delle tabelle con i codici corretti trovati nel TUO file
+tabella_gini           <- prepara_tabella(df1, "SI.POV.GINI")
+tabella_disoccupazione <- prepara_tabella(df1, "SL.UEM.TOTL.NE.ZS")
+
+# Nota: Questi nel tuo file sono la CRESCITA % annua, non il valore totale
+tabella_crescita_pil          <- prepara_tabella(df1, "NY.GDP.MKTP.KD.ZG")
+tabella_crescita_pil_procapite <- prepara_tabella(df1, "NY.GDP.PCAP.KD.ZG")
+
+# 3. Verifica (ora non dovrebbero essere più 0)
+print(paste("Righe Gini:", nrow(tabella_gini)))
+print(paste("Righe Disoccupazione:", nrow(tabella_disoccupazione)))
+print(paste("Righe Crescita PIL:", nrow(tabella_crescita_pil)))
+print(paste("Righe Crescita PIL Pro Capite:", nrow(tabella_crescita_pil_procapite)))
+
+```
+
+
+```{r}
+library(tidyverse)
+
+# Funzione per creare i grafici in modo automatico
+crea_grafico <- function(tabella, titolo, label_y) {
+  
+  # Trasformiamo i dati da "larghi" a "lunghi" per ggplot
+  tabella_long <- tabella %>%
+    pivot_longer(cols = -`Country Name`, 
+                 names_to = "Anno", 
+                 values_to = "Valore") %>%
+    mutate(Anno = as.numeric(Anno)) # Convertiamo l'anno in numero per l'asse X
+  
+  # Creazione del plot
+  ggplot(tabella_long, aes(x = Anno, y = Valore, color = `Country Name`, group = `Country Name`)) +
+    geom_line(size = 1) +
+    geom_point() +
+    theme_minimal() +
+    labs(title = titolo, 
+         x = "Anno", 
+         y = label_y, 
+         color = "Paese") +
+    theme(legend.position = "bottom")
+}
+
+# 1. Grafico Gini
+plot_gini <- crea_grafico(tabella_gini, "Andamento Indice di Gini", "Indice (0-100)")
+
+# 2. Grafico Disoccupazione
+plot_disoccupazione <- crea_grafico(tabella_disoccupazione, "Tasso di Disoccupazione", "% Forza Lavoro")
+
+# 3. Grafico Crescita PIL
+plot_pil <- crea_grafico(tabella_crescita_pil, "Crescita Annuale del PIL", "% variazione annua")
+
+# 4. Grafico Crescita PIL Pro Capite
+plot_procapite <- crea_grafico(tabella_crescita_pil_procapite, "Crescita PIL Pro Capite", "% variazione annua")
+
+# Per visualizzarli basta chiamarli:
+print(plot_gini)
+print(plot_disoccupazione)
+print(plot_pil)
+print(plot_procapite)
+```

@@ -1,0 +1,121 @@
+---
+title: "Untitled"
+format: html
+---
+
+
+
+```{r}
+library(tidyverse)
+
+# 1. Carica il dataset originale
+# Usiamo col_types = cols(.default = "c") per leggere tutto come testo inizialmente ed evitare errori di parsing
+df <- read.csv('head_count_ratio.txt', sep = ';')
+
+# 2. Definiamo i dati extra (stessi nomi di colonna del file originale)
+dati_extra <- tribble(
+  ~`Country.or.Area`, ~Year, ~Value,
+  "Argentina", 2023, 41.7,
+  "Argentina", 2024, 38.1,
+  "Brazil",    2022, 8.5,
+  "Brazil",    2023, 7.5,
+  "China",     2021, 21.0,
+  "Switzerland", 2021, 15.8,
+  "United States of America", 2023, 19.9,
+  "United States of America", 2024, 20.2,
+  "Spain",     2022, 20.4,
+  "France",    2021, 14.5
+)
+
+# 3. Pulizia, Conversione e Filtro
+paesi_target <- c(
+  "China", "Belgium", "Venezuela (Bolivarian Republic of)", 
+  "Netherlands", "Spain", "Argentina", "France", 
+  "United States of America", "Switzerland", "Brazil", 
+  "United Kingdom", "Germany"
+)
+
+df_filtrato <- df %>%
+  # Convertiamo Year e Value in numeri per renderli compatibili con dati_extra
+  mutate(
+    Year = as.numeric(Year),
+    Value = as.numeric(Value)
+  ) %>%
+  filter(`Country.or.Area` %in% paesi_target, Year >= 2013) %>%
+  select(`Country.or.Area`, Year, Value)
+
+# 4. Unione dei dati
+# Ora entrambi i dataframe hanno Year e Value come <double> (numeri)
+df_completo <- bind_rows(df_filtrato, dati_extra) %>%
+  arrange(`Country.or.Area`, desc(Year))
+
+library(tidyverse)
+
+# 1. Integrazione dati 2013-2024 (Basati su Banca Mondiale, Eurostat e ENCOVI)
+# Questi dati coprono i "buchi" del file originale
+dati_extra <- tribble(
+  ~Country.or.Area, ~Year, ~Value,
+  "Argentina", 2023, 41.7, "Argentina", 2024, 52.9,
+  "Brazil",    2023, 27.3, "Brazil",    2024, 23.1,
+  "China",     2020, 0.0,  "China",     2021, 0.0,
+  "Spain",     2023, 20.2, "Spain",     2024, 25.8,
+  "United States of America", 2023, 11.5, "United States of America", 2024, 10.6,
+  "Germany",   2023, 14.8, "Germany",   2024, 14.5,
+  "Venezuela (Bolivarian Republic of)", 2023, 81.5, "Venezuela (Bolivarian Republic of)", 2024, 82.8
+)
+
+library(tidyverse)
+
+# 1. Preparazione dei dati (unione e pulizia come prima)
+df_finalizzato <- df_completo %>%
+  mutate(
+    Year = as.numeric(Year),
+    Value = as.numeric(Value)
+  ) %>%
+  bind_rows(dati_extra) %>%
+  filter(Year >= 2013, Year <= 2024) %>%
+  distinct(Country.or.Area, Year, .keep_all = TRUE)
+
+# 2. PIVOT: Righe = Paesi, Colonne = Anni
+tabella_paesi_righe <- df_finalizzato %>%
+  select(Country.or.Area, Year, Value) %>%
+  # Qui invertiamo: i nomi delle colonne vengono dagli anni
+  pivot_wider(
+    names_from = Year, 
+    values_from = Value,
+    names_sort = TRUE # Mantiene gli anni in ordine cronologico (2013, 2014...)
+  ) %>%
+  arrange(Country.or.Area) # Ordina i paesi alfabeticamente
+
+# Visualizzazione
+print(tabella_paesi_righe)
+
+```
+
+
+```{r}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# 1. Prepariamo i dati creando la griglia completa per tutti gli anni e paesi
+df_plot <- df_completo %>%
+  mutate(Year = as.factor(Year)) %>% # Trasformiamo Year in fattore per una griglia pulita
+  complete(`Country.or.Area`, Year)   # Crea righe con NA per le combinazioni mancanti
+
+# 2. Creazione del grafico
+ggplot(df_plot, aes(x = `Country.or.Area`, y = Year)) +
+  # Sfondo giallo per TUTTE le celle (verrà coperto dove c'è il dato)
+  geom_tile(fill = "yellow") + 
+  # Celle colorate in base al valore (i NA risulteranno trasparenti/vuoti lasciando vedere il giallo)
+  geom_tile(aes(fill = Value), color = "white") + 
+  scale_fill_gradient(low = "lightblue", high = "blue", na.value = NA) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Mappa della Povertà (Giallo = Dato Mancante)", 
+    x = "Paese", 
+    y = "Anno", 
+    fill = "Valore %"
+  )
+```

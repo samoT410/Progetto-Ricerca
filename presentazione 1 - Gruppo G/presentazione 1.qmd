@@ -93,7 +93,7 @@ pkgs <- c(
     )
 
 new <- pkgs[!pkgs %in% rownames(installed.packages())]
-if (length(new)) install.packages(new, repos = "http://cran.rstudio.com/")
+if (length(new)) install.packages(new)
 
 # Caricamento dei pacchetti
 for (pkg in pkgs) {

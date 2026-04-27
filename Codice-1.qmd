@@ -143,114 +143,6 @@ ggplot(dati, aes(x = factor(anno), y = n)) +
 # ggsave("istat_tavola12_barre_alta_istruzione.png", width = 10, height = 6, dpi = 200)
 ```
 
-
-```{r}
-# Modello per descrive la relazione tra tasso di occupazione e numero di laureati emigrati (variazioni + controllo COVID)
-library(tidyverse)
-library(readxl)
-library(broom)
-library(ggplot2)
-
-# ── 1. LETTURA DATI (come nel tuo codice) ─────────────────────────────────────
-
-## Tavola 12 – laureati iscritti all'estero
-raw_t12  <- read_excel("tavola12_serie_istr.xlsx",
-                       sheet = "Tavola12", col_names = FALSE)
-
-anni_t12  <- 2013:2024
-cols_alto <- 2 + (seq_along(anni_t12) - 1) * 4 + 2
-
-laureati_estero <- tibble(
-  anno     = anni_t12,
-  laureati = as.numeric(raw_t12[26, cols_alto])
-)
-
-## Tavola 31 – tasso di occupazione terziaria
-raw_t31 <- read_excel("Dataset occupazione e disoccupazione.xlsx",
-                      sheet = "Sheet1", col_names = FALSE)
-
-riga_terziario <- which(apply(raw_t31, 1, function(r) {
-  any(grepl("^TERZIARIO$", trimws(r), ignore.case = TRUE))
-}))
-righe_totale <- which(apply(raw_t31, 1, function(r) {
-  any(grepl("^Totale$", trimws(r), ignore.case = TRUE))
-}))
-riga_totale <- min(righe_totale[righe_totale > riga_terziario])
-riga_val    <- as.numeric(raw_t31[riga_totale, ])
-
-occupazione <- tibble(
-  anno        = 2018:2024,
-  tasso_occ   = round(riga_val[2:8], 1)
-)
-
-# ── 2. DATASET CON LAG + TRASFORMAZIONI ───────────────────────────────────────
-
-dataset <- occupazione |>
-  mutate(occ_lag1 = lag(tasso_occ)) |>
-  left_join(laureati_estero, by = "anno") |>
-  filter(!is.na(occ_lag1)) |>
-  arrange(anno)
-
-# ── 3. TRASFORMAZIONI IMPORTANTI ──────────────────────────────────────────────
-
-dataset <- dataset |>
-  mutate(
-    # Variazioni (Δ)
-    d_laureati = laureati - lag(laureati),
-    d_occ      = occ_lag1 - lag(occ_lag1),
-
-    # Dummy COVID (shock esogeno)
-    covid = ifelse(anno == 2020, 1, 0)
-  ) |>
-  filter(!is.na(d_laureati), !is.na(d_occ))
-
-cat("── Dataset con trasformazioni ───────────────────────────────────────\n")
-print(dataset)
-
-# ── 4. MODELLO PRINCIPALE (variazioni + COVID) ────────────────────────────────
-
-modello_diff <- lm(d_laureati ~ d_occ + covid, data = dataset)
-
-cat("\n── Modello su variazioni (Δ) ───────────────────────────────────────\n")
-print(summary(modello_diff))
-
-tidy_diff  <- tidy(modello_diff, conf.int = TRUE)
-glance_diff <- glance(modello_diff)
-
-print(tidy_diff)
-
-cat(sprintf(
-  "\nR² = %.3f | Adj R² = %.3f | p-value = %.4f\n",
-  glance_diff$r.squared,
-  glance_diff$adj.r.squared,
-  glance_diff$p.value
-))
-
-# ── 5. ROBUSTNESS CHECK: ESCLUDO COVID ────────────────────────────────────────
-
-dataset_no_covid <- dataset |> filter(anno != 2020)
-
-modello_robust <- lm(d_laureati ~ d_occ, data = dataset_no_covid)
-
-cat("\n── Modello senza anno COVID ────────────────────────────────────────\n")
-print(summary(modello_robust))
-
-# ── 6. GRAFICO MIGLIORATO ─────────────────────────────────────────────────────
-
-ggplot(dataset, aes(x = d_occ, y = d_laureati)) +
-  geom_point(size = 4, color = "#2C7FB8") +
-  geom_smooth(method = "lm", se = TRUE, color = "#D95F0E") +
-  geom_text(aes(label = anno), vjust = -1, size = 4) +
-  labs(
-    title = "Variazioni occupazione vs variazioni emigrazione laureati",
-    subtitle = "Modello in differenze (Δ) con controllo COVID",
-    x = "Δ Tasso di occupazione (t-1)",
-    y = "Δ Laureati emigrati",
-    caption = "Fonte: ISTAT. Modello in differenze per ridurre correlazioni spurie."
-  ) +
-  theme_minimal()
-```
-
 ```{r}
 # Grafico a linee per iscrizioni di italiani con alta istruzione all'estero
 
@@ -316,7 +208,7 @@ top_paesi <- iscrizioni |>
   group_by(paese) |>
   summarise(totale = sum(n, na.rm = TRUE)) |>
   filter(!grepl("altri|totale", paese, ignore.case = TRUE)) |>
-  slice_max(totale, n = 8) |>
+  slice_max(totale, n = 12) |>
   pull(paese)
 
 dati_filt <- dati |>
@@ -326,9 +218,8 @@ dati_filt <- dati |>
 # ── 6. Palette e tipi di linea ─────────────────────────────────────────────────
 n_paesi  <- length(top_paesi)
 palette  <- setNames(
-  c("#378ADD","#D85A30","#1D9E75","#D4537E","#BA7517","#7F77DD", "#C0C0C0", "#dfe44f")[seq_len(n_paesi)],
-  top_paesi
-)
+  c("#378ADD","#D85A30","#1D9E75","#D4537E","#BA7517","#7F77DD", "#C0C0C0", "#dfe44f", "#ff7f00", "#9467bd", "#8c564b", "#e377c2")
+  [seq_len(n_paesi)],top_paesi)
 tipi_linea <- setNames(
   rep(c("solid","dashed","dotted"), length.out = n_paesi),
   top_paesi
@@ -340,9 +231,15 @@ ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
   geom_point(size = 2.2) +
   annotate("rect",
            xmin = 2019.5, xmax = 2021.5, ymin = -Inf, ymax = Inf,
-           fill = "#888780", alpha = 0.06) +
+           fill = "#d90429", alpha = 0.06) +
   annotate("text", x = 2020.5, y = max(dati_filt$n, na.rm = TRUE) * 0.97,
-           label = "Covid-19", size = 3, colour = "#888780", fontface = "italic") +
+           label = "Covid-19", size = 3, colour = "#d90429", fontface = "bold") +
+  # --- Fascia Brexit ---
+  annotate("rect",
+           xmin = 2016.5, xmax = 2019.5, ymin = -Inf, ymax = Inf,
+           fill = "#00247D", alpha = 0.04) + # Un blu molto trasparente
+  annotate("text", x = 2018.5, y = max(dati_filt$n, na.rm = TRUE) * 0.97,
+           label = "Brexit", size = 3, colour = "#00247D", fontface = "bold") +
   scale_colour_manual(values = palette) +
   scale_linetype_manual(values = tipi_linea) +
   scale_x_continuous(breaks = 2013:2024) +
@@ -356,7 +253,7 @@ ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
     subtitle = "Iscritti per trasferimento di residenza all'estero · Istruzione alta · per paese di destinazione",
     caption  = "Fonte: ISTAT – Demo.istat.it, Tavola 12 (2024 provvisorio)",
     x        = NULL,
-    y        = "Numero di iscrizioni (istruzione alta)",
+    y        = "Numero di italiani emigrati con alta istruzione",
     colour   = NULL,
     linetype = NULL
   ) +

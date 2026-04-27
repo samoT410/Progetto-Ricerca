@@ -106,7 +106,7 @@ df_plot <- df_completo %>%
 # 2. Creazione del grafico
 ggplot(df_plot, aes(x = `Country.or.Area`, y = Year)) +
   # Sfondo giallo per TUTTE le celle (verrà coperto dove c'è il dato)
-  geom_tile(fill = "yellow") + 
+  geom_tile(fill = "white") + 
   # Celle colorate in base al valore (i NA risulteranno trasparenti/vuoti lasciando vedere il giallo)
   geom_tile(aes(fill = Value), color = "white") + 
   scale_fill_gradient(low = "lightblue", high = "blue", na.value = NA) +

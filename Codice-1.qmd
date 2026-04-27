@@ -275,8 +275,3 @@ ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
 # ── 8. Salvataggio (opzionale) ─────────────────────────────────────────────────
 ggsave("istat_tavola12_alta_istruzione.png", width = 10, height = 6.5, dpi = 200)
 ```
-
-# descrizione dei tassi di occupazione nei paesi: regno unito, germania, brasile, spagna, francia
-
-
-

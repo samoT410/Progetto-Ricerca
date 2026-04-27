@@ -5,80 +5,80 @@ format: html
 
 
 ```{r}
-# Tabella con tassi di occupazione e disoccupazione per istruzione terziaria - totale Italia
-# https://www.istat.it/comunicato-stampa/livelli-di-istruzione-e-ritorni-occupazionali-anno-2024/
+# ============================================================
+#  Disoccupazione con alta istruzione - Solo Italia
+#  Fonte: disoccupati_con_alta_istruzione_vero.csv
+# ============================================================
 
-library(tidyverse)
-library(readxl)
-library(knitr)
-library(kableExtra)
+# Installa i pacchetti se non presenti
+if (!requireNamespace("readr",  quietly = TRUE)) install.packages("readr")
+if (!requireNamespace("dplyr",  quietly = TRUE)) install.packages("dplyr")
+if (!requireNamespace("tidyr",  quietly = TRUE)) install.packages("tidyr")
+if (!requireNamespace("gt",     quietly = TRUE)) install.packages("gt")
 
-# ── 1. Lettura del file ────────────────────────────────────────────────────────
-percorso_file <- "Dataset occupazione e disoccupazione.xlsx"
+library(readr)
+library(dplyr)
+library(tidyr)
+library(gt)
 
-raw <- read_excel(percorso_file, sheet = "Sheet1", col_names = FALSE)
+# ── 1. Caricamento dati ───────────────────────────────────────
+df <- read_csv("disoccupati_con_alta_istruzione_vero.csv",
+               show_col_types = FALSE)
 
-# ── 2. Individuazione della riga Totale TERZIARIO ─────────────────────────────
-# Regex esatta: "^TERZIARIO$" esclude "SECONDARIO SUPERIORE E TERZIARIO"
-riga_terziario <- which(apply(raw, 1, function(r) {
-  any(grepl("^TERZIARIO$", trimws(r), ignore.case = TRUE))
-}))
+# ── 2. Filtra solo l'Italia (prima riga / Country Code = ITA) ─
+italia <- df |>
+  filter(`Country Code` == "ITA")
 
-# Prima riga "Totale" che appare dopo la sezione TERZIARIO
-righe_totale <- which(apply(raw, 1, function(r) {
-  any(grepl("^Totale$", trimws(r), ignore.case = TRUE))
-}))
-riga_totale <- min(righe_totale[righe_totale > riga_terziario])
+# ── 3. Seleziona e riorganizza le colonne degli anni ──────────
+anni_cols <- names(italia)[grepl("\\[YR", names(italia))]
 
-# ── 3. Estrazione dei valori ───────────────────────────────────────────────────
-# Struttura colonne della riga Totale:
-# Col 1    : etichetta ("Totale")
-# Col 2-8  : Tasso di occupazione (%)   -> 2018, 2019, 2020, 2021, 2022, 2023, 2024
-# Col 9    : separatore vuoto
-# Col 10-15: variazioni occupazione (non usate)
-# Col 16   : separatore vuoto
-# Col 17-20: Tasso di disoccupazione (%) -> 2021, 2022, 2023, 2024
-# NB: il tasso di disoccupazione nel dataset ISTAT e' disponibile solo dal 2021
-
-riga_val <- as.numeric(raw[riga_totale, ])
-
-occ_vals <- round(riga_val[2:8],  1)   # occupazione   2018-2024
-dis_vals <- round(riga_val[17:20], 1)  # disoccupazione 2021-2024
-
-# ── 4. Costruzione della tabella ──────────────────────────────────────────────
-tabella <- tibble(
-  Indicatore = c("Tasso di occupazione (%)", "Tasso di disoccupazione (%)"),
-  `2018` = c(occ_vals[1], NA_real_),
-  `2019` = c(occ_vals[2], NA_real_),
-  `2020` = c(occ_vals[3], NA_real_),
-  `2021` = c(occ_vals[4], dis_vals[1]),
-  `2022` = c(occ_vals[5], dis_vals[2]),
-  `2023` = c(occ_vals[6], dis_vals[3]),
-  `2024` = c(occ_vals[7], dis_vals[4])
-)
-
-# ── 5. Tabella kable ───────────────────────────────────────────────────────────
-tabella |>
-  kbl(
-    caption  = "Tassi di occupazione e disoccupazione - Istruzione terziaria - Totale Italia (valori %)",
-    align    = c("l", rep("c", 7)),
-    na_col   = "n.d."
+italia_long <- italia |>
+  select(all_of(anni_cols)) |>
+  pivot_longer(
+    cols      = everything(),
+    names_to  = "Anno",
+    values_to = "Tasso (%)"
   ) |>
-  kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed", "bordered"),
-    full_width        = FALSE,
-    position          = "left",
-    font_size         = 13
+  mutate(
+    Anno      = sub(" \\[YR\\d+\\]", "", Anno),   # pulisce "2013 [YR2013]" → "2013"
+    Anno      = as.integer(Anno),
+    `Tasso (%)` = suppressWarnings(as.numeric(`Tasso (%)`))
   ) |>
-  column_spec(1, bold = TRUE, width = "14em") |>
-  row_spec(1, color = "#1a5276") |>
-  row_spec(2, color = "#922b21") |>
-  footnote(
-    general       = "Fonte: ISTAT - Rilevazione sulle forze di lavoro. 20-34enni con titolo terziario conseguito 1-3 anni prima, non piu' in istruzione e formazione. Il tasso di disoccupazione e' disponibile nel dataset dal 2021.",
-    general_title = ""
-  )
+  filter(!is.na(`Tasso (%)`))   # rimuove anni senza dato
+
+# ── 4. Visualizza la tabella con {gt} ─────────────────────────
+tabella <- italia_long |>
+  gt() |>
+  tab_header(
+    title    = md("**Disoccupazione con alta istruzione — Italia**"),
+    subtitle = md("*% della forza lavoro con istruzione avanzata*")
+  ) |>
+  cols_label(
+    Anno        = "Anno",
+    `Tasso (%)` = "Tasso (%)"
+  ) |>
+  fmt_number(
+    columns  = `Tasso (%)`,
+    decimals = 2
+  ) |>
+  data_color(
+    columns = `Tasso (%)`,
+    method  = "numeric",
+    palette = c("#d4f1d4", "#f7a7a6")   # verde basso → rosso alto
+  ) |>
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_source_note(
+    source_note = "Fonte: World Bank — disoccupati_con_alta_istruzione_vero.csv"
+  ) |>
+  opt_table_font(font = "Arial") |>
+  opt_row_striping()
+
+# Mostra la tabella nel Viewer di Positron
+print(tabella)
 ```
-
 ```{r}
 # Grafico a barre per trasferimento di italiani con alta istruzione all'estero
 

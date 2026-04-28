@@ -27,7 +27,89 @@ Abbiamo analizzato i dati sui tassi di disoccupazione degli individui con alta i
 
 
 # Tabella descrittiva della disoccupazione con alta istruzione in Italia
+```{r include = FALSE}
+# ============================================================
+#  Disoccupazione con alta istruzione - Solo Italia
+#  Fonte: disoccupati_con_alta_istruzione_vero.csv
+# ============================================================
 
+# Installa i pacchetti se non presenti
+if (!requireNamespace("readr",  quietly = TRUE)) install.packages("readr")
+if (!requireNamespace("dplyr",  quietly = TRUE)) install.packages("dplyr")
+if (!requireNamespace("tidyr",  quietly = TRUE)) install.packages("tidyr")
+if (!requireNamespace("gt",     quietly = TRUE)) install.packages("gt")
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(gt)
+
+# ── 1. Caricamento dati ───────────────────────────────────────
+df <- read_csv("disoccupati_con_alta_istruzione_vero.csv",
+               show_col_types = FALSE)
+
+# ── 2. Filtra solo l'Italia (prima riga / Country Code = ITA) ─
+italia <- df |>
+  filter(`Country Code` == "ITA")
+
+# ── 3. Seleziona e riorganizza le colonne degli anni ──────────
+anni_cols <- names(italia)[grepl("\\[YR", names(italia))]
+
+italia_long <- italia |>
+  select(all_of(anni_cols)) |>
+  pivot_longer(
+    cols      = everything(),
+    names_to  = "Anno",
+    values_to = "Tasso (%)"
+  ) |>
+  mutate(
+    Anno      = sub(" \\[YR\\d+\\]", "", Anno),   # pulisce "2013 [YR2013]" → "2013"
+    Anno      = as.integer(Anno),
+    `Tasso (%)` = suppressWarnings(as.numeric(`Tasso (%)`))
+  ) |>
+  filter(!is.na(`Tasso (%)`))   # rimuove anni senza dato
+
+# ── 4. Visualizza la tabella con {gt} ─────────────────────────
+tabella <- italia_long |>
+  gt() |>
+  tab_header(
+    title    = md("**Disoccupazione con alta istruzione — Italia**"),
+    subtitle = md("*% della forza lavoro con istruzione avanzata*")
+  ) |>
+  cols_label(
+    Anno        = "Anno",
+    `Tasso (%)` = "Tasso (%)"
+  ) |>
+  fmt_number(
+    columns  = `Tasso (%)`,
+    decimals = 2
+  ) |>
+  data_color(
+    columns = `Tasso (%)`,
+    method  = "numeric",
+    palette = c("#d4f1d4", "#f7a7a6")   # verde basso → rosso alto
+  ) |>
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_source_note(
+    source_note = "Fonte: World Bank — disoccupati_con_alta_istruzione_vero.csv"
+  ) |>
+  opt_table_font(font = "Arial") |>
+  opt_row_striping()
+
+# Mostra la tabella nel Viewer di Positron
+print(tabella)
+
+library(gt)
+
+gtsave(tabella, "tabella.png")
+```
+
+```{r}
+knitr::include_graphics("tabella.png")
+```
 
 # Analisi della situazione economica e migratoria in Italia - Migrazione
 \begin{block}{}
@@ -341,7 +423,3 @@ print(plot_procapite)
 ```
 
 # Analisi del Head Ratio - non inserito come regressore per mancanza di dati
-
-
-
-# 

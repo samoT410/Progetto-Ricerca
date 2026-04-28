@@ -113,7 +113,7 @@ ggplot(dati, aes(x = factor(anno), y = n)) +
   geom_text(
     aes(label = scales::label_number(big.mark = ".", decimal.mark = ",")(n)),
     vjust = -0.5,
-    size  = 3.2,
+    size  = 3.5,
     color = "grey30"
   ) +
   scale_y_continuous(
@@ -383,6 +383,7 @@ library(showtext)
 font_add_google("Lato",     "lato")
 font_add_google("Playfair Display", "playfair")
 showtext_auto()
+showtext_opts(dpi = 96)
 
 # ── Palette e tema condivisi ──────────────────────────────────
 PALETTE <- c(
@@ -393,10 +394,10 @@ PALETTE <- c(
 
 tema_base <- theme_minimal(base_family = "lato", base_size = 13) +
   theme(
-    plot.title       = element_markdown(family = "playfair", size = 18,
+    plot.title       = element_markdown(family = "playfair", size = 26,
                                         face = "bold", color = "#1a1a2e",
                                         margin = margin(b = 6)),
-    plot.subtitle    = element_markdown(size = 12, color = "#555577",
+    plot.subtitle    = element_markdown(size = 15, color = "#555577",
                                         margin = margin(b = 16)),
     plot.caption     = element_text(size = 9, color = "#888899",
                                     hjust = 0, margin = margin(t = 12)),
@@ -518,8 +519,8 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
   geom_tile(color = "white", linewidth = 0.6, na.rm = FALSE) +
   geom_text(
     aes(label = if_else(is.na(Value), "—", sprintf("%.1f", Value))),
-    color  = if_else(df_heat$Value > 45 | is.na(df_heat$Value), "white", "#222222"),
-    size   = 3.2,
+    color  = if_else(df_heat$Value > 28 | is.na(df_heat$Value), "white", "#222222"),
+    size   = 7,
     family = "lato",
     na.rm  = FALSE
   ) +
@@ -537,15 +538,15 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
   ) +
   scale_x_continuous(breaks = 2013:2024, expand = c(0, 0)) +
   labs(
-    title    = "**Tasso di Povertà per Paese e Anno**",
+    title    = "Tasso di Povertà per Paese e Anno",
     subtitle = "Head Count Ratio — % popolazione sotto soglia di povertà | Celle grigie = dato mancante",
     caption  = "Fonte: World Bank · Eurostat · ENCOVI",
     x = NULL, y = NULL
   ) +
   tema_base +
   theme(
-    axis.text.x      = element_text(angle = 40, hjust = 1, size = 10),
-    axis.text.y      = element_text(size = 11),
+    axis.text.x      = element_text(angle = 40, hjust = 1, size = 20),
+    axis.text.y      = element_text(size = 20),
     panel.grid       = element_blank(),
     legend.position  = "top",
     legend.key.width = unit(3, "cm")

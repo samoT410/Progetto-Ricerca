@@ -78,6 +78,10 @@ tabella <- italia_long |>
 
 # Mostra la tabella nel Viewer di Positron
 print(tabella)
+
+library(gt)
+
+gtsave(tabella, "tabella.png")
 ```
 ```{r}
 # Grafico a barre per trasferimento di italiani con alta istruzione all'estero

@@ -1,0 +1,165 @@
+---
+title: "Untitled"
+format: html
+---
+
+```{r}
+# ============================================================
+# Fuga dei Cervelli - Serie Storiche per Paese
+# Grafici: Gini Index | GDP Growth | Unemployment
+# ============================================================
+
+library(tidyverse)
+library(ggplot2)
+
+# ---- 1. CARICAMENTO DATI -----------------------------------
+
+df_raw <- read.csv(
+  "Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv",
+  check.names = FALSE,
+  na.strings = c("..", "NA", "")
+)
+
+# Paesi di interesse
+target_countries <- c("USA", "GBR", "ESP", "NLD", "DEU", "FRA", "CHN", "BRA", "BEL", "ARG", "VEN")
+
+# Indicatori di interesse (nomi esatti come nel dataset)
+target_series <- c(
+  "Gini index",
+  "GDP growth (annual %)",
+  "Unemployment, total (% of total labor force) (national estimate)"
+)
+
+# ---- 2. PULIZIA E RESHAPE ----------------------------------
+
+# Colonne degli anni
+year_cols <- grep("^\\d{4}", colnames(df_raw), value = TRUE)
+
+df_long <- df_raw %>%
+  filter(
+    `Country Code` %in% target_countries,
+    `Series Name`  %in% target_series
+  ) %>%
+  select(`Country Code`, `Country Name`, `Series Name`, all_of(year_cols)) %>%
+  pivot_longer(
+    cols      = all_of(year_cols),
+    names_to  = "Year_Label",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Year  = as.integer(str_extract(Year_Label, "^\\d{4}")),
+    Value = as.numeric(Value)
+  ) %>%
+  filter(!is.na(Value))
+
+# Etichette leggibili per le serie
+df_long <- df_long %>%
+  mutate(Indicator = case_when(
+    `Series Name` == "Gini index"                                                           ~ "Gini Index",
+    `Series Name` == "GDP growth (annual %)"                                                ~ "GDP Growth (annual %)",
+    `Series Name` == "Unemployment, total (% of total labor force) (national estimate)"    ~ "Unemployment (% labour force, national est.)",
+    TRUE ~ `Series Name`
+  ))
+
+# ---- 3. PALETTE COLORI E TEMA COMUNE ----------------------
+
+# Palette qualitativa con 11 colori distinti
+country_colors <- c(
+  "USA" = "#E63946",
+  "GBR" = "#457B9D",
+  "ESP" = "#F4A261",
+  "NLD" = "#2A9D8F",
+  "DEU" = "#264653",
+  "FRA" = "#E9C46A",
+  "CHN" = "#C0392B",
+  "BRA" = "#27AE60",
+  "BEL" = "#8E44AD",
+  "ARG" = "#1ABC9C",
+  "VEN" = "#D35400"
+)
+
+tema_base <- theme_minimal(base_size = 12) +
+  theme(
+    plot.title       = element_text(face = "bold", size = 14, hjust = 0),
+    plot.subtitle    = element_text(size = 10, color = "grey40", hjust = 0),
+    plot.caption     = element_text(size = 8,  color = "grey55", hjust = 1),
+    legend.position  = "bottom",
+    legend.title     = element_blank(),
+    legend.key.width = unit(1.5, "cm"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "grey92"),
+    axis.title.y     = element_text(size = 10, color = "grey40"),
+    axis.title.x     = element_blank()
+  )
+
+caption_text <- "Fonte: World Data Bank | Elaborazione: ricerca fuga dei cervelli"
+
+# ---- 4. GRAFICO 1 – GINI INDEX ----------------------------
+
+df_gini <- df_long %>% filter(Indicator == "Gini Index")
+
+p1 <- ggplot(df_gini, aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 0.9, na.rm = TRUE) +
+  geom_point(size = 1.8,    na.rm = TRUE) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(min(df_gini$Year), max(df_gini$Year), by = 2)) +
+  labs(
+    title    = "Gini Index – Disuguaglianza del reddito",
+    subtitle = "Serie storica per paese (0 = perfetta uguaglianza, 100 = massima disuguaglianza)",
+    y        = "Gini Index",
+    caption  = caption_text
+  ) +
+  tema_base
+
+# ---- 5. GRAFICO 2 – GDP GROWTH ----------------------------
+
+df_gdp <- df_long %>% filter(Indicator == "GDP Growth (annual %)")
+
+p2 <- ggplot(df_gdp, aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey60", linewidth = 0.5) +
+  geom_line(linewidth = 0.9, na.rm = TRUE) +
+  geom_point(size = 1.8,    na.rm = TRUE) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(min(df_gdp$Year), max(df_gdp$Year), by = 2)) +
+  labs(
+    title    = "Crescita del PIL (GDP Growth annual %)",
+    subtitle = "Variazione percentuale annua del PIL a prezzi costanti",
+    y        = "GDP Growth (%)",
+    caption  = caption_text
+  ) +
+  tema_base
+
+# ---- 6. GRAFICO 3 – UNEMPLOYMENT --------------------------
+
+df_unemp <- df_long %>% filter(Indicator == "Unemployment (% labour force, national est.)")
+
+p3 <- ggplot(df_unemp, aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 0.9, na.rm = TRUE) +
+  geom_point(size = 1.8,    na.rm = TRUE) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(min(df_unemp$Year), max(df_unemp$Year), by = 2)) +
+  labs(
+    title    = "Tasso di Disoccupazione (stima nazionale)",
+    subtitle = "% della forza lavoro totale – stima nazionale",
+    y        = "Disoccupazione (%)",
+    caption  = caption_text
+  ) +
+  tema_base
+
+# ---- 7. VISUALIZZAZIONE / SALVATAGGIO ---------------------
+
+# Mostra i grafici in Positron / RStudio
+print(p1)
+print(p2)
+print(p3)
+
+# Per salvare i file (decommenta se necessario):
+# ggsave("gini_index.png",    plot = p1, width = 10, height = 6, dpi = 300)
+# ggsave("gdp_growth.png",    plot = p2, width = 10, height = 6, dpi = 300)
+# ggsave("unemployment.png",  plot = p3, width = 10, height = 6, dpi = 300)
+
+# Per esportare un unico PDF con tutti e tre i grafici:
+# pdf("grafici_fuga_cervelli.pdf", width = 12, height = 7)
+# print(p1); print(p2); print(p3)
+# dev.off()
+```

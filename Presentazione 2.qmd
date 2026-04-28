@@ -1,7 +1,7 @@
 ---
 title: "Presentazione 2"
 author: "Soddu, Nassih, Parentela, Trebbi, Zanirato"
-date: 30 - 04 - 2026
+date: 30 aprile 2026
 format:
   beamer:
     theme: CambridgeUS
@@ -11,7 +11,9 @@ format:
 lang: it
 ---
 
+
 # Obiettivo principale 
+\setbeamertemplate{footline}{}
 \begin{block}{}
 \Large
 Selezionare, analizzare e sviluppare i dati del dataset sui flussi migratori per identificare tendenze di emigrazione e motivazioni significative che possano essere utili per comprendere come si sviluppa la fuga di cervelli dall'Italia verso i Big 5 europei e altri maggiori poli d'emigrazione nel mondo.
@@ -20,6 +22,7 @@ Selezionare, analizzare e sviluppare i dati del dataset sui flussi migratori per
 ---
 
 # Analisi della situazione economica e migratoria in Italia - Disoccupazione
+\setbeamertemplate{footline}{}
 \begin{block}{}
 \Large
 Abbiamo analizzato i dati sui tassi di disoccupazione degli individui con alta istruzione, riscontrando in particolare un aumento significativo negli anni della pandemia, mentre da dopo la fine del 2021 si è osservata una tendenza alla diminuzione, seppur con valori ancora superiori a quelli pre-pandemici.
@@ -27,7 +30,8 @@ Abbiamo analizzato i dati sui tassi di disoccupazione degli individui con alta i
 
 
 # Tabella descrittiva della disoccupazione con alta istruzione in Italia
-```{r include = FALSE}
+\setbeamertemplate{footline}{}
+```{r include = FALSE, fig.align='center', fig.width=7, fig.height=4.5}
 # ============================================================
 #  Disoccupazione con alta istruzione - Solo Italia
 #  Fonte: disoccupati_con_alta_istruzione_vero.csv
@@ -107,7 +111,7 @@ library(gt)
 gtsave(tabella, "tabella.png")
 ```
 
-```{r}
+```{r fig.align='center', fig.width=7, fig.height=4.5}
 knitr::include_graphics("tabella.png")
 ```
 
@@ -118,7 +122,8 @@ Analogamente al tasso di disoccupazione, nel tempo, si è verificato un aumento 
 \end{block}
 
 # Grafico a barre dei flussi migratori dall'Italia verso l'estero
-```{r}
+\setbeamertemplate{footline}{}
+```{r, fig.align='center', fig.width=7, fig.height=4.5}
 # Grafico a barre per trasferimento di italiani con alta istruzione all'estero
 
 library(tidyverse)
@@ -187,7 +192,8 @@ Analisi dei flussi migratori visualizzata attraverso un diagramma cartesiano che
 \end{block}
 
 # Grafico dei flussi migratori per anno e paese di destinazione
-```{r}
+\setbeamertemplate{footline}{}
+```{r, fig.align='center', fig.width=7, fig.height=4.5}
 # Grafico a linee per iscrizioni di italiani con alta istruzione all'estero
 
 library(tidyverse)
@@ -336,7 +342,8 @@ Per ognuno di questi fattori, è stata condotta un'analisi descrittiva per evide
 \end{block}
 
 # Grafico dell'indice di Gini - Disugualianza
-```{r}
+\setbeamertemplate{footline}{}
+```{r fig.align='center', fig.width=7, fig.height=4.5}
 library(tidyverse)
 
 # 1. Caricamento (usiamo check.names=FALSE per mantenere gli spazi nei nomi colonne)
@@ -365,7 +372,7 @@ tabella_crescita_pil_procapite <- prepara_tabella(df1, "NY.GDP.PCAP.KD.ZG")
 ```
 
 
-```{r}
+```{r fig.align='center', fig.width=7, fig.height=4.5}
 library(tidyverse)
 
 # Funzione per creare i grafici in modo automatico
@@ -412,13 +419,13 @@ print(plot_gini)
 
 # Grafico Disoccupazione
 
-```{r}
+```{r fig.align='center', fig.width=7, fig.height=4.5}
 print(plot_disoccupazione)
 ```
 
 # Grafico Crescita PIL pro capite
 
-```{r}
+```{r fig.align='center', fig.width=7, fig.height=4.5}
 print(plot_procapite)
 ```
 

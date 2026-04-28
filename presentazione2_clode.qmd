@@ -47,7 +47,7 @@ superiori a quelli pre-pandemici.
 
 ## Tabella descrittiva della disoccupazione con alta istruzione in Italia
 
-```{r tabella-disoccupazione, fig.height=2}
+```{r tabella-disoccupazione, fig.height=3.5, out.height="80%"}
 library(readr)
 library(dplyr)
 library(tidyr)
@@ -99,7 +99,7 @@ tabella <- italia_long |>
     locations = cells_column_labels()
   ) |>
   tab_source_note(
-    source_note = "Fonte: World Bank — disoccupati_con_alta_istruzione_vero.csv"
+    source_note = "Fonte: World Bank"
   ) |>
   opt_table_font(font = "Arial") |>
   opt_row_striping()
@@ -448,9 +448,13 @@ df_heat <- df_completo |>
 ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
   geom_tile(color = "white", linewidth = 0.5) +
   geom_text(
-    aes(label = if_else(is.na(Value), "—", sprintf("%.1f", Value))),
-    size = 2.8, color = "grey20"
+    aes(
+      label = if_else(is.na(Value), "—", sprintf("%.1f", Value)),
+      color = if_else(!is.na(Value) & Value > 35, "white", "grey20")
+    ),
+    size = 2.8
   ) +
+  scale_color_identity() +
   scale_fill_gradientn(
     colours  = c("#D5F5E3", "#F9E79F", "#F0B27A", "#E74C3C", "#7B241C"),
     values   = rescale(c(0, 20, 40, 60, 85)),

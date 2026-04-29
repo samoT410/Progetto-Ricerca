@@ -274,7 +274,24 @@ ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
 
 ---
 
+
 ## Modello di regressione panel
+
+```{=tex}
+\[ 
+y_{it} = \alpha + \beta X_{it} + \mu_i + \lambda_t + \varepsilon_{it}
+\]
+
+\begin{itemize}
+\item $y_{it}$: flusso di migranti verso il Paese $i$ al tempo $t$
+\item $X_{it}$: variabile che al tempo $t$ influenza la fuga di cervelli verso il Paese $i$
+\item $\mu_i$: componente (costante nel tempo) non osservabile che influenza la fuga verso il Paese $i$ 
+\item $\lambda_t$: componente al tempo $t$ che influenza in generale la fuga di cervelli
+\item $\varepsilon_{it}$: componente casuale, non spiegata dal modello per ogni Paese $i$ al tempo $t$
+
+\end{itemize}
+
+```
 
 ---
 

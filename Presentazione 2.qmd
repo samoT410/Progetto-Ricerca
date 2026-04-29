@@ -342,7 +342,7 @@ Per ognuno di questi fattori, è stata condotta un'analisi descrittiva per evide
 \end{block}
 
 # Grafico dell'indice di Gini - Disugualianza
-\setbeamertemplate{footline}{}
+
 ```{r fig.align='center', fig.width=7, fig.height=4.5}
 library(tidyverse)
 

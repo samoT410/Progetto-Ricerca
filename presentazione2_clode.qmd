@@ -301,10 +301,51 @@ I regressori della variabile dipendente (fuga di cervelli) sono stati
 identificati in:
 
 \begin{itemize}
-  \item Crescita del PIL pro capite
+  \item Crescita percentuale del PIL
   \item Disuguaglianza (indice di Gini)
   \item Disoccupazione generale
 \end{itemize}
+
+---
+
+## GDP Growth — Crescita del PIL (annual %)
+
+```{r grafico-gdp, fig.width=9, fig.height=5}
+df_long_wb %>%
+  filter(`Series Name` == "GDP growth (annual %)") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey55", linewidth = 0.5) +
+  geom_line(linewidth = 0.85) +
+  geom_point(size = 1.6) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(
+    subtitle = "Variazione percentuale annua del PIL a prezzi costanti",
+    y        = "GDP Growth (%)",
+    caption  = "Fonte: World Data Bank"
+  ) +
+  tema_slide
+```
+
+---
+
+## Disoccupazione — % forza lavoro (stima nazionale)
+
+```{r grafico-unemp, fig.width=9, fig.height=5}
+df_long_wb %>%
+  filter(`Series Name` == "Unemployment, total (% of total labor force) (national estimate)") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 0.85) +
+  geom_point(size = 1.6) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(
+    subtitle = "% della forza lavoro totale – stima nazionale",
+    y        = "Disoccupazione (%)",
+    caption  = "Fonte: World Data Bank"
+  ) +
+  tema_slide
+```
 
 ---
 
@@ -364,48 +405,6 @@ df_long_wb %>%
   labs(
     subtitle = "0 = perfetta uguaglianza  |  100 = massima disuguaglianza",
     y        = "Gini Index",
-    caption  = "Fonte: World Data Bank"
-  ) +
-  tema_slide
-```
-
-
----
-
-## GDP Growth — Crescita del PIL (annual %)
-
-```{r grafico-gdp, fig.width=9, fig.height=5}
-df_long_wb %>%
-  filter(`Series Name` == "GDP growth (annual %)") %>%
-  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "grey55", linewidth = 0.5) +
-  geom_line(linewidth = 0.85) +
-  geom_point(size = 1.6) +
-  scale_color_manual(values = country_colors) +
-  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
-  labs(
-    subtitle = "Variazione percentuale annua del PIL a prezzi costanti",
-    y        = "GDP Growth (%)",
-    caption  = "Fonte: World Data Bank"
-  ) +
-  tema_slide
-```
-
----
-
-## Disoccupazione — % forza lavoro (stima nazionale)
-
-```{r grafico-unemp, fig.width=9, fig.height=5}
-df_long_wb %>%
-  filter(`Series Name` == "Unemployment, total (% of total labor force) (national estimate)") %>%
-  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
-  geom_line(linewidth = 0.85) +
-  geom_point(size = 1.6) +
-  scale_color_manual(values = country_colors) +
-  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
-  labs(
-    subtitle = "% della forza lavoro totale – stima nazionale",
-    y        = "Disoccupazione (%)",
     caption  = "Fonte: World Data Bank"
   ) +
   tema_slide

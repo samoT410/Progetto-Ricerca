@@ -146,9 +146,9 @@ ggplot(dati, aes(x = factor(anno), y = n)) +
     expand = expansion(mult = c(0, 0))
   ) +
   labs(
-    title   = "Italiani con alta istruzione iscritti all'estero — Totale",
+    title    = "Italiani con alta istruzione iscritti all'estero — Totale",
     subtitle = "Tavola 12 ISTAT · Riga Totale ISCRIZIONI · Colonna istruzione alta · Anni 2013–2024",
-    caption = "Fonte: ISTAT – Demo.istat.it, Tavola 12 (2024 provvisorio)",
+    caption  = "Fonte: ISTAT – Demo.istat.it, Tavola 12 (2024 provvisorio)",
     x = NULL,
     y = "Numero di persone (istruzione alta)"
   ) +
@@ -205,8 +205,8 @@ estrai_sezione <- function(df, riga_inizio, riga_fine = nrow(df)) {
     filter(!is.na(n))
 }
 
-riga_sep      <- riga_cancellazioni - 2
-iscrizioni    <- estrai_sezione(raw, riga_iscrizioni,    riga_fine = riga_sep) |>
+riga_sep   <- riga_cancellazioni - 2
+iscrizioni <- estrai_sezione(raw, riga_iscrizioni, riga_fine = riga_sep) |>
   mutate(tipo = "Iscrizioni")
 
 top_paesi <- iscrizioni |>
@@ -274,7 +274,6 @@ ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
 
 ---
 
-
 ## Modello di regressione panel
 
 ```{=tex}
@@ -288,9 +287,7 @@ y_{it} = \alpha + \beta X_{it} + \mu_i + \lambda_t + \varepsilon_{it}
 \item $\mu_i$: componente (costante nel tempo) non osservabile che influenza la fuga verso il Paese $i$ 
 \item $\lambda_t$: componente al tempo $t$ che influenza in generale la fuga di cervelli
 \item $\varepsilon_{it}$: componente casuale, non spiegata dal modello per ogni Paese $i$ al tempo $t$
-
 \end{itemize}
-
 ```
 
 ---
@@ -307,6 +304,53 @@ identificati in:
 \end{itemize}
 
 ---
+
+```{r carica-dati-wb, include=FALSE}
+# BLOCCO CONDIVISO: carica df_long_wb, country_colors e tema_slide
+# usati dai tre grafici successivi (GDP, Disoccupazione, Gini)
+library(tidyverse)
+
+df_wb <- read.csv(
+  "Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv",
+  check.names = FALSE,
+  na.strings  = c("..", "NA", "")
+)
+
+target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","CHN","BRA","BEL","ARG","VEN")
+year_cols <- grep("^\\d{4}", colnames(df_wb), value = TRUE)
+
+df_long_wb <- df_wb %>%
+  filter(`Country Code` %in% target_countries,
+         `Series Name`  %in% c("Gini index",
+                                "GDP growth (annual %)",
+                                "Unemployment, total (% of total labor force) (national estimate)")) %>%
+  select(`Country Code`, `Series Name`, all_of(year_cols)) %>%
+  pivot_longer(cols = all_of(year_cols), names_to = "Year_Label", values_to = "Value") %>%
+  mutate(Year  = as.integer(str_extract(Year_Label, "^\\d{4}")),
+         Value = as.numeric(Value)) %>%
+  filter(!is.na(Value))
+
+country_colors <- c(
+  "USA" = "#E63946", "GBR" = "#457B9D", "ESP" = "#F4A261",
+  "NLD" = "#2A9D8F", "DEU" = "#264653", "FRA" = "#E9C46A",
+  "CHN" = "#C0392B", "BRA" = "#27AE60", "BEL" = "#8E44AD",
+  "ARG" = "#1ABC9C", "VEN" = "#D35400"
+)
+
+tema_slide <- theme_minimal(base_size = 10) +
+  theme(
+    plot.subtitle    = element_text(size = 8, color = "grey40"),
+    plot.caption     = element_text(size = 7, color = "grey55", hjust = 1),
+    legend.position  = "bottom",
+    legend.title     = element_blank(),
+    legend.text      = element_text(size = 7),
+    legend.key.width = unit(1.2, "cm"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "grey92"),
+    axis.title.y     = element_text(size = 9, color = "grey40"),
+    axis.title.x     = element_blank()
+  )
+```
 
 ## GDP Growth — Crescita del PIL (annual %)
 
@@ -352,49 +396,6 @@ df_long_wb %>%
 ## Gini Index — Disuguaglianza del reddito
 
 ```{r grafico-gini, fig.width=9, fig.height=5}
-library(tidyverse)
-
-df_wb <- read.csv(
-  "Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv",
-  check.names = FALSE,
-  na.strings  = c("..", "NA", "")
-)
-
-target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","CHN","BRA","BEL","ARG","VEN")
-year_cols <- grep("^\\d{4}", colnames(df_wb), value = TRUE)
-
-df_long_wb <- df_wb %>%
-  filter(`Country Code` %in% target_countries,
-         `Series Name`  %in% c("Gini index",
-                                "GDP growth (annual %)",
-                                "Unemployment, total (% of total labor force) (national estimate)")) %>%
-  select(`Country Code`, `Series Name`, all_of(year_cols)) %>%
-  pivot_longer(cols = all_of(year_cols), names_to = "Year_Label", values_to = "Value") %>%
-  mutate(Year  = as.integer(str_extract(Year_Label, "^\\d{4}")),
-         Value = as.numeric(Value)) %>%
-  filter(!is.na(Value))
-
-country_colors <- c(
-  "USA" = "#E63946", "GBR" = "#457B9D", "ESP" = "#F4A261",
-  "NLD" = "#2A9D8F", "DEU" = "#264653", "FRA" = "#E9C46A",
-  "CHN" = "#C0392B", "BRA" = "#27AE60", "BEL" = "#8E44AD",
-  "ARG" = "#1ABC9C", "VEN" = "#D35400"
-)
-
-tema_slide <- theme_minimal(base_size = 10) +
-  theme(
-    plot.subtitle    = element_text(size = 8, color = "grey40"),
-    plot.caption     = element_text(size = 7, color = "grey55", hjust = 1),
-    legend.position  = "bottom",
-    legend.title     = element_blank(),
-    legend.text      = element_text(size = 7),
-    legend.key.width = unit(1.2, "cm"),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "grey92"),
-    axis.title.y     = element_text(size = 9, color = "grey40"),
-    axis.title.x     = element_blank()
-  )
-
 df_long_wb %>%
   filter(`Series Name` == "Gini index") %>%
   ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
@@ -427,16 +428,19 @@ paesi_target <- c(
   "United Kingdom", "Germany"
 )
 
+# FIX: ogni riga del tribble deve stare su una riga separata
 dati_extra <- tribble(
-  ~`Country.or.Area`, ~Year, ~Value,
-  "Argentina",  2023, 41.7,  "Argentina",  2024, 38.1,
-  "Brazil",     2022,  8.5,  "Brazil",     2023,  7.5,
-  "China",      2021, 21.0,
-  "Switzerland",2021, 15.8,
-  "United States of America", 2023, 19.9,
-  "United States of America", 2024, 20.2,
-  "Spain",      2022, 20.4,
-  "France",     2021, 14.5
+  ~`Country.or.Area`,                  ~Year, ~Value,
+  "Argentina",                          2023,   41.7,
+  "Argentina",                          2024,   38.1,
+  "Brazil",                             2022,    8.5,
+  "Brazil",                             2023,    7.5,
+  "China",                              2021,   21.0,
+  "Switzerland",                        2021,   15.8,
+  "United States of America",           2023,   19.9,
+  "United States of America",           2024,   20.2,
+  "Spain",                              2022,   20.4,
+  "France",                             2021,   14.5
 )
 
 df_filtrato <- df_hcr |>
@@ -479,9 +483,9 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
   ) +
   scale_x_continuous(breaks = 2013:2024, expand = c(0, 0)) +
   labs(
-    title   = "Head Count Ratio — Tasso di Povertà per Paese e Anno",
+    title    = "Head Count Ratio — Tasso di Povertà per Paese e Anno",
     subtitle = "% popolazione sotto soglia di povertà | celle grigie = dato mancante",
-    caption = "Fonte: World Bank · Eurostat · ENCOVI",
+    caption  = "Fonte: World Bank · Eurostat · ENCOVI",
     x = NULL, y = NULL
   ) +
   theme_minimal(base_size = 9) +

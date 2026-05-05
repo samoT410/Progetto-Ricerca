@@ -70,6 +70,7 @@ italia_long %>%
     column_labels.background.color = "#457B9D"
   )
 ```
+
 ```{r}
 # Grafico a barre per trasferimento di italiani con alta istruzione all'estero
 
@@ -338,21 +339,73 @@ df_long_wb %>%
 
 ## Disoccupazione — % forza lavoro (stima nazionale)
 
-```{r grafico-unemp, fig.width=9, fig.height=5}
-df_long_wb %>%
-  filter(`Series Name` == "Unemployment, total (% of total labor force) (national estimate)") %>%
-  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
-  geom_line(linewidth = 0.85) +
-  geom_point(size = 1.6) +
-  scale_color_manual(values = country_colors) +
-  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
-  labs(
-    subtitle = "% della forza lavoro totale – stima nazionale",
-    y        = "Disoccupazione (%)",
-    caption  = "Fonte: World Data Bank"
+```{r}
+# ============================================================
+# Grafico a linee: Tasso di occupazione per paese (2013-2024)
+# Esclusa l'Italia — colori per codice paese
+# ============================================================
+
+library(tidyverse)
+
+# Carica il dataset
+df <- read_csv("occupazionevero3.csv")
+
+# Palette colori per codice paese
+colori_paesi <- c(
+  "USA" = "#E63946", "GBR" = "#457B9D", "ESP" = "#F4A261",
+  "NLD" = "#2A9D8F", "DEU" = "#264653", "FRA" = "#E9C46A",
+  "CHN" = "#C0392B", "BRA" = "#27AE60", "BEL" = "#8E44AD",
+  "ARG" = "#1ABC9C", "VEN" = "#D35400", "CHE" = "#95A5A6"  # Svizzera aggiunta
+)
+
+# Filtra, esclude Italia e NA
+altri_long <- df %>%
+  filter(`Country Name` != "Italy", !is.na(`Country Name`)) %>%
+  select(`Country Name`, `Country Code`,
+         starts_with(c("2013","2014","2015","2016","2017",
+                        "2018","2019","2020","2021","2022",
+                        "2023","2024"))) %>%
+  pivot_longer(
+    cols      = -c(`Country Name`, `Country Code`),
+    names_to  = "Anno",
+    values_to = "Tasso_Occupazione"
+  ) %>%
+  mutate(Anno = as.integer(str_extract(Anno, "\\d{4}")))
+
+# Grafico
+ggplot(altri_long, aes(x = Anno, y = Tasso_Occupazione,
+                        color = `Country Code`,
+                        group = `Country Code`)) +
+  geom_line(linewidth = 1.1) +
+  geom_point(size = 2.2) +
+  scale_color_manual(
+    values = colori_paesi,
+    labels = c(
+      "ARG" = "Argentina",   "BEL" = "Belgium",
+      "BRA" = "Brazil",      "CHE" = "Switzerland",
+      "CHN" = "China",       "DEU" = "Germany",
+      "ESP" = "Spain",       "FRA" = "France",
+      "GBR" = "United Kingdom", "NLD" = "Netherlands",
+      "USA" = "United States",  "VEN" = "Venezuela"
+    )
   ) +
-  tema_slide
+  scale_x_continuous(breaks = 2013:2024) +
+  labs(
+    title    = "Tasso di occupazione per paese (2013–2024)",
+    subtitle = "Esclusa l'Italia · Employment to population ratio, 15+, totale (%)",
+    x        = "Anno",
+    y        = "Tasso di occupazione (%)",
+    color    = "Paese"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x      = element_text(angle = 45, hjust = 1),
+    legend.position  = "right",
+    plot.title       = element_text(face = "bold", size = 15),
+    plot.subtitle    = element_text(color = "gray40")
+  )
 ```
+
 
 ---
 

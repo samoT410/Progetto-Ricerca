@@ -476,3 +476,85 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
   )
 ```
 
+```{r}
+# ============================================================
+# Grafico: % popolazione (25+) con almeno istruzione secondaria
+# Fonte: World Development Indicators (World Bank)
+# ============================================================
+
+library(tidyverse)
+
+# ------ 1. Caricamento ----------------------------------------
+df_raw <- read_csv("Livello di istruzione.csv")
+
+# ------ 2. Pulizia -------------------------------------------
+anni_cols <- c(
+  "2013 [YR2013]", "2014 [YR2014]", "2015 [YR2015]", "2016 [YR2016]",
+  "2017 [YR2017]", "2018 [YR2018]", "2019 [YR2019]", "2020 [YR2020]",
+  "2021 [YR2021]", "2022 [YR2022]", "2023 [YR2023]", "2024 [YR2024]"
+)
+
+df <- df_raw |>
+  # Teniamo solo le righe con dati effettivi (paesi)
+  filter(!is.na(`Country Name`), !is.na(`Series Name`)) |>
+  select(`Country Name`, all_of(anni_cols)) |>
+  # Formato lungo
+  pivot_longer(
+    cols = all_of(anni_cols),
+    names_to  = "anno_raw",
+    values_to = "percentuale"
+  ) |>
+  mutate(
+    anno        = as.integer(str_extract(anno_raw, "\\d{4}")),
+    percentuale = suppressWarnings(as.numeric(percentuale))
+  ) |>
+  filter(!is.na(percentuale))
+
+# ------ 3. Grafico -------------------------------------------
+pal <- c(
+  "United States"  = "#E63946",
+  "United Kingdom" = "#457B9D",
+  "Spain"          = "#F4A261",
+  "Netherlands"    = "#2A9D8F",
+  "Germany"        = "#264653",
+  "France"         = "#6A4C93",
+  "China"          = "#E9C46A",
+  "Brazil"         = "#06D6A0",
+  "Belgium"        = "#118AB2",
+  "Argentina"      = "#FFB703",
+  "Venezuela, RB"  = "#FB8500",
+  "Switzerland"    = "#D62828"
+)
+
+p <- ggplot(df, aes(x = anno, y = percentuale,
+                    color = `Country Name`,
+                    group = `Country Name`)) +
+  geom_line(linewidth = 0.9, na.rm = TRUE) +
+  geom_point(size = 2, na.rm = TRUE) +
+  scale_color_manual(values = pal, name = "Paese") +
+  scale_x_continuous(breaks = min(df$anno):max(df$anno)) +
+  scale_y_continuous(
+    limits = c(0, 100),
+    labels = scales::label_percent(scale = 1, suffix = "%")
+  ) +
+  labs(
+    title    = "Popolazione (25+) con almeno istruzione secondaria completata",
+    subtitle = "Dati: World Development Indicators – World Bank",
+    x        = "Anno",
+    y        = "Percentuale (%)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title       = element_text(face = "bold", size = 14),
+    plot.subtitle    = element_text(color = "grey50", size = 10),
+    legend.position  = "right",
+    panel.grid.minor = element_blank(),
+    axis.text.x      = element_text(angle = 45, hjust = 1)
+  )
+
+print(p)
+
+# Salva il grafico (opzionale)
+# ggsave("grafico_istruzione.png", plot = p, width = 12, height = 7, dpi = 150)
+
+```

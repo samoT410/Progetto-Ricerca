@@ -3,7 +3,6 @@ title: "Untitled"
 format: html
 ---
 
-
 ```{r}
 # ============================================================
 #  Disoccupazione con alta istruzione - Solo Italia
@@ -476,3 +475,4 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
     plot.margin     = margin(10, 10, 8, 10)
   )
 ```
+

@@ -332,7 +332,7 @@ df_long_wb %>%
   tema_slide
 ```
 
-## Disoccupazione — % forza lavoro (stima nazionale)
+## Occupazione — % forza lavoro (stima nazionale)
 
 ```{r grafico-unemp, fig.width=9, fig.height=5}
 df_long_wb %>%

@@ -1,15 +1,33 @@
 ---
-title: "Untitled"
-format: html
+title: "Analisi Econometrica della Fuga di Cervelli"
+subtitle: "Determinanti, Trend e Impatti"
+author: "Soddu, Nassih, Parentela, Trebbi, Zanirato"
+date: last-modified
+lang: it
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+    geometry:
+      - top=25mm
+      - left=25mm
+      - right=25mm
+      - bottom=25mm
+    papersize: a4
+    fig-pos: "H"
+    fig-align: center
+execute:
+  echo: false
+  warning: false
+  message: false
 ---
 
-```{r}
-# ============================================================
-#  Disoccupazione con alta istruzione - Solo Italia
-#  Fonte: disoccupati_con_alta_istruzione_vero.csv
-# ============================================================
+# Introduzione e Dati sulla Disoccupazione
 
-# Installa i pacchetti se non presenti
+```{r}
+#| label: setup-disoccupazione
+
 if (!requireNamespace("readr",  quietly = TRUE)) install.packages("readr")
 if (!requireNamespace("dplyr",  quietly = TRUE)) install.packages("dplyr")
 if (!requireNamespace("tidyr",  quietly = TRUE)) install.packages("tidyr")
@@ -20,15 +38,12 @@ library(dplyr)
 library(tidyr)
 library(gt)
 
-# ── 1. Caricamento dati ───────────────────────────────────────
 df <- read_csv("disoccupati_con_alta_istruzione_vero.csv",
                show_col_types = FALSE)
 
-# ── 2. Filtra solo l'Italia (prima riga / Country Code = ITA) ─
 italia <- df |>
   filter(`Country Code` == "ITA")
 
-# ── 3. Seleziona e riorganizza le colonne degli anni ──────────
 anni_cols <- names(italia)[grepl("\\[YR", names(italia))]
 
 italia_long <- italia |>
@@ -39,13 +54,12 @@ italia_long <- italia |>
     values_to = "Tasso (%)"
   ) |>
   mutate(
-    Anno      = sub(" \\[YR\\d+\\]", "", Anno),   # pulisce "2013 [YR2013]" → "2013"
+    Anno      = sub(" \\[YR\\d+\\]", "", Anno), 
     Anno      = as.integer(Anno),
     `Tasso (%)` = suppressWarnings(as.numeric(`Tasso (%)`))
   ) |>
-  filter(!is.na(`Tasso (%)`))   # rimuove anni senza dato
+  filter(!is.na(`Tasso (%)`))  
 
-# ── 4. Visualizza la tabella con {gt} ─────────────────────────
 tabella <- italia_long |>
   gt() |>
   tab_header(
@@ -63,7 +77,7 @@ tabella <- italia_long |>
   data_color(
     columns = `Tasso (%)`,
     method  = "numeric",
-    palette = c("#d4f1d4", "#f7a7a6")   # verde basso → rosso alto
+    palette = c("#d4f1d4", "#f7a7a6") 
   ) |>
   tab_style(
     style     = cell_text(weight = "bold"),
@@ -75,33 +89,31 @@ tabella <- italia_long |>
   opt_table_font(font = "Arial") |>
   opt_row_striping()
 
-# Mostra la tabella nel Viewer di Positron
-print(tabella)
+# Mostra la tabella nel PDF
+tabella
 
-library(gt)
-
+# Salva la tabella esternamente
 gtsave(tabella, "tabella.png")
 ```
+
+# Analisi Iscrizioni AIRE (Istat)
+
 ```{r}
-# Grafico a barre per trasferimento di italiani con alta istruzione all'estero
+#| label: grafico-iscritti-totale
+#| fig-width: 8
+#| fig-height: 5
 
 library(tidyverse)
 library(readxl)
 library(ggplot2)
+library(scales)
 
-# ── 1. Lettura del file ────────────────────────────────────────────────────────
 percorso_file <- "tavola12_serie_istr.xlsx"
 
 raw <- read_excel(percorso_file, sheet = "Tavola12", col_names = FALSE)
 
-# ── 2. Estrazione riga 26 – Totale ISCRIZIONI, colonna "alto" ─────────────────
-# Struttura colonne per ogni anno (gruppi di 4):
-# col 2 = basso, col 3 = medio, col 4 = alto, col 5 = totale  → anno 2013
-# col 6 = basso, col 7 = medio, col 8 = alto, col 9 = totale  → anno 2014
-# ...ecc. (la colonna "alto" è sempre la 3a di ogni gruppo di 4)
-
 anni     <- 2013:2024
-cols_alto <- 2 + (seq_along(anni) - 1) * 4 + 2  # col 4, 8, 12, 16, ...
+cols_alto <- 2 + (seq_along(anni) - 1) * 4 + 2 
 
 riga26   <- as.numeric(raw[26, cols_alto])
 
@@ -110,8 +122,7 @@ dati <- tibble(
   n     = riga26
 )
 
-# ── 3. Grafico a barre ────────────────────────────────────────────────────────
-ggplot(dati, aes(x = factor(anno), y = n)) +
+p_iscritti <- ggplot(dati, aes(x = factor(anno), y = n)) +
   geom_col(fill = "#378ADD", width = 0.7) +
   geom_text(
     aes(label = scales::label_number(big.mark = ".", decimal.mark = ",")(n)),
@@ -142,71 +153,39 @@ ggplot(dati, aes(x = factor(anno), y = n)) +
     plot.margin     = margin(16, 16, 12, 16)
   )
 
-# ── 4. Salvataggio (opzionale) ─────────────────────────────────────────────────
-# ggsave("istat_tavola12_barre_alta_istruzione.png", width = 10, height = 6, dpi = 200)
+p_iscritti
 ```
 
 ```{r}
-# Grafico a linee per iscrizioni di italiani con alta istruzione all'estero
+#| label: grafico-iscritti-paesi
+#| fig-width: 10
+#| fig-height: 6.5
 
-library(tidyverse)
-library(readxl)
-
-# ── 1. Lettura del file ────────────────────────────────────────────────────────
-# Modifica il percorso con quello reale sul tuo computer
-percorso_file <- "tavola12_serie_istr.xlsx"
-
-raw <- read_excel(percorso_file, sheet = "Tavola12", col_names = FALSE)
-
-# ── 2. Identificazione delle sezioni ──────────────────────────────────────────
-# Il foglio ha due sezioni: ISCRIZIONI e CANCELLAZIONI
-# Troviamo le righe di intestazione di ciascuna sezione
 riga_iscrizioni   <- which(apply(raw, 1, function(r) any(grepl("^ISCRIZIONI$",   r, ignore.case = TRUE))))
 riga_cancellazioni <- which(apply(raw, 1, function(r) any(grepl("^CANCELLAZIONI$", r, ignore.case = TRUE))))
 
-anni <- 2013:2024
-
-# ── 3. Funzione per estrarre una sezione ──────────────────────────────────────
 estrai_sezione <- function(df, riga_inizio, riga_fine = nrow(df)) {
-  # Dati: le righe tra l'intestazione ISCRIZIONI/CANCELLAZIONI e la riga Totale
   blocco <- df[(riga_inizio + 1):(riga_fine - 1), ]
-
-  # Rimuovi la riga "Totale" se presente
   blocco <- blocco[!grepl("^totale$", blocco[[1]], ignore.case = TRUE), ]
-  # Rimuovi righe con NA nella colonna paese
   blocco <- blocco[!is.na(blocco[[1]]) & nchar(trimws(blocco[[1]])) > 0, ]
-
-  # Colonne: 1 = paese, poi gruppi di 4 (basso, medio, alto, totale) per ogni anno
   paesi <- trimws(blocco[[1]])
-
-  # Per ogni anno estraiamo la colonna "alto" (posizione 3 di ogni gruppo di 4)
-  # Le colonne iniziano dalla 2 (col 2 = basso 2013, 3 = medio 2013, 4 = alto 2013, 5 = totale 2013, ...)
-  alto_cols <- 2 + (seq_along(anni) - 1) * 4 + 2  # col 4, 8, 12, ... (1-indexed: 4,8,12,...)
-
+  alto_cols <- 2 + (seq_along(anni) - 1) * 4 + 2 
   mat <- blocco[, alto_cols, drop = FALSE]
   mat <- mutate_all(as.data.frame(mat), as.numeric)
-
   colnames(mat) <- anni
   mat$paese <- paesi
-
   pivot_longer(mat, cols = -paese, names_to = "anno", values_to = "n") |>
     mutate(anno = as.integer(anno)) |>
     filter(!is.na(n))
 }
 
-# ── 4. Estrazione dati ─────────────────────────────────────────────────────────
-# Riga intestazione anni è subito sopra ISCRIZIONI → saltiamo quella
-# La sezione ISCRIZIONI va da riga_iscrizioni+1 fino a riga della seconda intestazione anni
-# che si trova subito prima di CANCELLAZIONI
-riga_sep <- riga_cancellazioni - 2  # riga intestazione anni intermedia
+riga_sep <- riga_cancellazioni - 2  
 
 iscrizioni    <- estrai_sezione(raw, riga_iscrizioni,    riga_fine = riga_sep) |> mutate(tipo = "Iscrizioni")
 cancellazioni <- estrai_sezione(raw, riga_cancellazioni, riga_fine = nrow(raw)) |> mutate(tipo = "Cancellazioni")
 
-dati <- bind_rows(iscrizioni, cancellazioni)
+dati_completi <- bind_rows(iscrizioni, cancellazioni)
 
-# ── 5. Paesi principali da mostrare ───────────────────────────────────────────
-# Selezioniamo i top 7 per totale iscrizioni (dove vanno gli italiani)
 top_paesi <- iscrizioni |>
   group_by(paese) |>
   summarise(totale = sum(n, na.rm = TRUE)) |>
@@ -214,11 +193,10 @@ top_paesi <- iscrizioni |>
   slice_max(totale, n = 12) |>
   pull(paese)
 
-dati_filt <- dati |>
+dati_filt <- dati_completi |>
   filter(tipo == "Iscrizioni", paese %in% top_paesi) |>
   mutate(paese = factor(paese, levels = top_paesi))
 
-# ── 6. Palette e tipi di linea ─────────────────────────────────────────────────
 n_paesi  <- length(top_paesi)
 palette  <- setNames(
   c("#378ADD","#D85A30","#1D9E75","#D4537E","#BA7517","#7F77DD", "#C0C0C0", "#dfe44f", "#ff7f00", "#9467bd", "#8c564b", "#e377c2")
@@ -228,8 +206,7 @@ tipi_linea <- setNames(
   top_paesi
 )
 
-# ── 7. Grafico ─────────────────────────────────────────────────────────────────
-ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
+p_paesi <- ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
   geom_line(linewidth = 0.9) +
   geom_point(size = 2.2) +
   annotate("rect",
@@ -237,10 +214,9 @@ ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
            fill = "#d90429", alpha = 0.06) +
   annotate("text", x = 2020.5, y = max(dati_filt$n, na.rm = TRUE) * 0.97,
            label = "Covid-19", size = 3, colour = "#d90429", fontface = "bold") +
-  # --- Fascia Brexit ---
   annotate("rect",
            xmin = 2016.5, xmax = 2019.5, ymin = -Inf, ymax = Inf,
-           fill = "#00247D", alpha = 0.04) + # Un blu molto trasparente
+           fill = "#00247D", alpha = 0.04) +
   annotate("text", x = 2018.5, y = max(dati_filt$n, na.rm = TRUE) * 0.97,
            label = "Brexit", size = 3, colour = "#00247D", fontface = "bold") +
   scale_colour_manual(values = palette) +
@@ -275,15 +251,15 @@ ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
   guides(colour   = guide_legend(nrow = 2),
          linetype = guide_legend(nrow = 2))
 
-# ── 8. Salvataggio (opzionale) ─────────────────────────────────────────────────
-ggsave("istat_tavola12_alta_istruzione.png", width = 10, height = 6.5, dpi = 200)
+p_paesi
+
+ggsave("istat_tavola12_alta_istruzione.png", plot = p_paesi, width = 10, height = 6.5, dpi = 200)
 ```
 
+# Contesto Macroeconomico Internazionale
 
-```{r carica-dati-wb, include=FALSE}
-# BLOCCO CONDIVISO: carica df_long_wb, country_colors e tema_slide
-# usati dai tre grafici successivi (GDP, Disoccupazione, Gini)
-library(tidyverse)
+```{r}
+#| label: carica-dati-wb
 
 df_wb <- read.csv(
   "Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv",
@@ -329,7 +305,11 @@ tema_slide <- theme_minimal(base_size = 10) +
 
 ## GDP Growth — Crescita del PIL (annual %)
 
-```{r grafico-gdp, fig.width=9, fig.height=5}
+```{r}
+#| label: grafico-gdp
+#| fig-width: 9
+#| fig-height: 5
+
 df_long_wb %>%
   filter(`Series Name` == "GDP growth (annual %)") %>%
   ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
@@ -346,11 +326,13 @@ df_long_wb %>%
   tema_slide
 ```
 
----
-
 ## Disoccupazione — % forza lavoro (stima nazionale)
 
-```{r grafico-unemp, fig.width=9, fig.height=5}
+```{r}
+#| label: grafico-unemp
+#| fig-width: 9
+#| fig-height: 5
+
 df_long_wb %>%
   filter(`Series Name` == "Unemployment, total (% of total labor force) (national estimate)") %>%
   ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
@@ -366,11 +348,13 @@ df_long_wb %>%
   tema_slide
 ```
 
----
-
 ## Gini Index — Disuguaglianza del reddito
 
-```{r grafico-gini, fig.width=9, fig.height=5}
+```{r}
+#| label: grafico-gini
+#| fig-width: 9
+#| fig-height: 5
+
 df_long_wb %>%
   filter(`Series Name` == "Gini index") %>%
   ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
@@ -386,13 +370,12 @@ df_long_wb %>%
   tema_slide
 ```
 
----
+## Analisi del Head Count Ratio
 
-## Analisi del Head Count Ratio — non inserito come regressore per mancanza di dati
-
-```{r grafico-hcr, fig.width=9, fig.height=5}
-library(tidyverse)
-library(scales)
+```{r}
+#| label: grafico-hcr
+#| fig-width: 9
+#| fig-height: 5
 
 df_hcr <- read.csv("head_count_ratio.txt", sep = ";")
 
@@ -403,7 +386,6 @@ paesi_target <- c(
   "United Kingdom", "Germany"
 )
 
-# FIX: ogni riga del tribble deve stare su una riga separata
 dati_extra <- tribble(
   ~`Country.or.Area`,                  ~Year, ~Value,
   "Argentina",                          2023,   41.7,
@@ -475,4 +457,3 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
     plot.margin     = margin(10, 10, 8, 10)
   )
 ```
-

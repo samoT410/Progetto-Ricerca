@@ -557,3 +557,210 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
   )
 
 ```
+
+
+# Test panel di confronto valori per i regressori 
+
+
+```{r}
+# modello panel per saggiare la differenza tra livelli di istruzione
+
+# 1. Caricamento librerie
+library(tidyverse)
+
+# 2. Caricamento e pulizia dati
+# Sostituisci 'Livello di istruzione.csv' con il percorso corretto se necessario
+dati_raw <- read.csv("Livello di istruzione.csv", check.names = FALSE)
+
+dati_long <- dati_raw %>%
+  # Trasformiamo le colonne degli anni in una singola colonna 'year'
+  pivot_longer(
+    cols = contains("[YR"), 
+    names_to = "year", 
+    values_to = "education_level"
+  ) %>%
+  # Pulizia del nome dell'anno (es. da "2013 [YR2013]" a 2013)
+  mutate(
+    year = as.numeric(gsub("\\[YR|\\]", "", str_extract(year, "\\[YR\\d{4}\\]"))),
+    education_level = as.numeric(education_level),
+    country = `Country Name`
+  ) %>%
+  # Rimuoviamo eventuali valori mancanti per il modello
+  filter(!is.na(education_level))
+
+# 3. Costruzione del modello Panel (Two-Way Fixed Effects)
+# Nota: L'uso di factor(country) e factor(year) stima gli effetti fissi per entità e tempo
+model_fe <- lm(education_level ~ factor(country) + factor(year), data = dati_long)
+
+# Carichiamo la libreria per una visualizzazione pulita
+library(tidyverse)
+
+# 1. Creazione del dataframe con i tuoi risultati
+tabella_risultati <- data.frame(
+  Variabile = c(
+    "Brasile", "Cina", "Francia", "Germania", "Paesi Bassi", 
+    "Spagna", "Svizzera", "Regno Unito", "Stati Uniti", "Venezuela",
+    "Anno 2014", "Anno 2015", "Anno 2016", "Anno 2017", "Anno 2018", 
+    "Anno 2019", "Anno 2020", "Anno 2021", "Anno 2022", "Anno 2023", "Anno 2024"
+  ),
+  Coefficiente = c(
+    -24.95, -14.86, -0.37, 9.96, 4.13, -7.52, 10.68, 14.20, 9.52, -17.82,
+    0.90, 2.27, 3.09, 3.45, 3.36, 4.78, 4.59, 5.71, 5.97, 6.10, 4.62
+  ),
+  Significativita = c(
+    "Sì (***)", "Sì (***)", "No", "Sì (***)", "Sì (***)", "Sì (***)", "Sì (***)", "Sì (***)", "Sì (***)", "Sì (***)",
+    "No", "Sì (*)", "Sì (**)", "Sì (**)", "Sì (**)", "Sì (***)", "Sì (***)", "Sì (***)", "Sì (***)", "Sì (***)", "Sì (*)"
+  )
+)
+
+# 2. Aggiunta della colonna con la spiegazione empirica
+tabella_risultati <- tabella_risultati %>%
+  mutate(Spiegazione = case_when(
+    grepl("Anno", Variabile) ~ paste("Rispetto al 2013, il livello globale di istruzione è aumentato di", Coefficiente, "punti."),
+    TRUE ~ paste("Rispetto al Belgio, questo paese ha mediamente il", Coefficiente, "% in più/meno di istruiti.")
+  ))
+
+# Visualizzazione della tabella
+print(tabella_risultati)
+```
+
+
+```{r}
+# modello panel per saggiare la differenza tra livelli di istruzione
+# 1. Caricamento librerie
+library(tidyverse)
+
+# 2. Caricamento e pulizia dati occupazione
+dati_occ_raw <- read.csv("occupazionevero3.csv", check.names = FALSE)
+
+dati_occ_long <- dati_occ_raw %>%
+  pivot_longer(
+    cols = contains("[YR"), 
+    names_to = "year", 
+    values_to = "employment_rate"
+  ) %>%
+  mutate(
+    year = as.numeric(gsub("\\[YR|\\]", "", str_extract(year, "\\[YR\\d{4}\\]"))),
+    employment_rate = as.numeric(employment_rate),
+    country = `Country Name`
+  ) %>%
+  filter(!is.na(employment_rate))
+
+# 3. Costruzione del modello Panel (Two-Way Fixed Effects)
+# Qui il Belgio e il 2013 rimarranno i termini di riferimento (baseline)
+model_occ_fe <- lm(employment_rate ~ factor(country) + factor(year), data = dati_occ_long)
+
+# 4. Estrazione automatica dei risultati in tabella
+# Invece di scriverli a mano, usiamo 'broom' per rendere tutto automatico
+library(broom)
+
+tabella_occupazione <- tidy(model_occ_fe) %>%
+  select(term, estimate, p.value) %>%
+  mutate(
+    Significativita = case_when(
+      p.value < 0.001 ~ "Sì (***)",
+      p.value < 0.01  ~ "Sì (**)",
+      p.value < 0.05  ~ "Sì (*)",
+      TRUE            ~ "No"
+    ),
+    Spiegazione = case_when(
+      grepl("year", term) ~ paste("Rispetto al 2013, l'occupazione globale è cambiata di", round(estimate, 2), "punti."),
+      grepl("country", term) ~ paste("Rispetto al Belgio, questo paese ha mediamente il", round(estimate, 2), "% di occupati in più/meno."),
+      TRUE ~ "Intercetta (Base: Belgio nel 2013)"
+    )
+  )
+
+# Visualizzazione
+print(tabella_occupazione)
+```
+
+
+```{r}
+library(tidyverse)
+library(broom)
+
+# 1. Caricamento dati
+dati_multi <- read.csv("Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv", check.names = FALSE)
+
+# Funzione migliorata: pulisce e controlla se ci sono abbastanza dati
+prepara_panel_sicuro <- function(df, nome_serie) {
+  temp <- df %>%
+    filter(`Series Name` == nome_serie) %>%
+    pivot_longer(
+      cols = contains("[YR"),
+      names_to = "year",
+      values_to = "value"
+    ) %>%
+    mutate(
+      year = as.numeric(gsub("\\[YR|\\]", "", str_extract(year, "\\[YR\\d{4}\\]"))),
+      value = as.numeric(value),
+      country = `Country Name`
+    ) %>%
+    filter(!is.na(value))
+  
+  # Controllo critico: abbiamo almeno 2 paesi e 2 anni?
+  if(length(unique(temp$country)) < 2 || length(unique(temp$year)) < 2) {
+    stop(paste("Errore: La serie", nome_serie, "ha dati insufficienti per un modello panel (serve più di un paese/anno)."))
+  }
+  return(temp)
+}
+
+# --- MODELLO 1: INDICE DI GINI ---
+# Usa il nome esatto "Gini index"
+data_gini <- prepara_panel_sicuro(dati_multi, "Gini index")
+model_gini <- lm(value ~ factor(country) + factor(year), data = data_gini)
+
+# --- MODELLO 2: PIL PRO CAPITE ---
+# Usa il nome esatto "GDP per capita growth (annual %)"
+data_gdp <- prepara_panel_sicuro(dati_multi, "GDP per capita growth (annual %)")
+model_gdp <- lm(value ~ factor(country) + factor(year), data = data_gdp)
+
+# 2. Visualizzazione Risultati
+summary(model_gini)
+summary(model_gdp)
+
+
+library(tidyverse)
+library(broom)
+
+# --- 1. TABELLA RIASSUNTIVA: INDICE DI GINI ---
+tabella_gini_clean <- tidy(model_gini) %>%
+  select(term, estimate, p.value) %>%
+  mutate(
+    Significativita = case_when(
+      p.value < 0.001 ~ "Sì (***)",
+      p.value < 0.01  ~ "Sì (**)",
+      p.value < 0.05  ~ "Sì (*)",
+      TRUE            ~ "No"
+    ),
+    Spiegazione = case_when(
+      grepl("year", term) ~ paste("Rispetto al 2013, la disuguaglianza globale è variata di", round(estimate, 2), "punti."),
+      grepl("country", term) ~ paste("Rispetto agli USA, questo paese ha un Gini di", round(estimate, 2), "punti diverso."),
+      TRUE ~ "Punto di riferimento (USA, 2013)"
+    )
+  )
+
+# --- 2. TABELLA RIASSUNTIVA: PIL PRO CAPITE (Crescita %) ---
+tabella_gdp_clean <- tidy(model_gdp) %>%
+  select(term, estimate, p.value) %>%
+  mutate(
+    Significativita = case_when(
+      p.value < 0.001 ~ "Sì (***)",
+      p.value < 0.01  ~ "Sì (**)",
+      p.value < 0.05  ~ "Sì (*)",
+      TRUE            ~ "No"
+    ),
+    Spiegazione = case_when(
+      grepl("year", term) ~ paste("Rispetto al 2013, la crescita media globale è variata del", round(estimate, 2), "%."),
+      grepl("country", term) ~ paste("Rispetto agli USA, questo paese cresce mediamente il", round(estimate, 2), "% in più/meno."),
+      TRUE ~ "Punto di riferimento (USA, 2013)"
+    )
+  )
+
+# --- Visualizzazione ---
+print("--- TABELLA INDICE DI GINI ---")
+print(tabella_gini_clean)
+
+print("--- TABELLA CRESCITA PIL PRO CAPITE ---")
+print(tabella_gdp_clean)
+```

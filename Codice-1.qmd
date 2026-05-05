@@ -281,279 +281,198 @@ ggsave("istat_tavola12_alta_istruzione.png", width = 10, height = 6.5, dpi = 200
 ```
 
 
-```{r}
+```{r carica-dati-wb, include=FALSE}
+# BLOCCO CONDIVISO: carica df_long_wb, country_colors e tema_slide
+# usati dai tre grafici successivi (GDP, Disoccupazione, Gini)
 library(tidyverse)
 
-# 1. Carica il dataset originale
-# Usiamo col_types = cols(.default = "c") per leggere tutto come testo inizialmente ed evitare errori di parsing
-df <- read.csv('head_count_ratio.txt', sep = ';')
-
-# 2. Definiamo i dati extra (stessi nomi di colonna del file originale)
-dati_extra <- tribble(
-  ~`Country.or.Area`, ~Year, ~Value,
-  "Argentina", 2023, 41.7,
-  "Argentina", 2024, 38.1,
-  "Brazil",    2022, 8.5,
-  "Brazil",    2023, 7.5,
-  "China",     2021, 21.0,
-  "Switzerland", 2021, 15.8,
-  "United States of America", 2023, 19.9,
-  "United States of America", 2024, 20.2,
-  "Spain",     2022, 20.4,
-  "France",    2021, 14.5
+df_wb <- read.csv(
+  "Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv",
+  check.names = FALSE,
+  na.strings  = c("..", "NA", "")
 )
 
-# 3. Pulizia, Conversione e Filtro
+target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","CHN","BRA","BEL","ARG","VEN")
+year_cols <- grep("^\\d{4}", colnames(df_wb), value = TRUE)
+
+df_long_wb <- df_wb %>%
+  filter(`Country Code` %in% target_countries,
+         `Series Name`  %in% c("Gini index",
+                                "GDP growth (annual %)",
+                                "Unemployment, total (% of total labor force) (national estimate)")) %>%
+  select(`Country Code`, `Series Name`, all_of(year_cols)) %>%
+  pivot_longer(cols = all_of(year_cols), names_to = "Year_Label", values_to = "Value") %>%
+  mutate(Year  = as.integer(str_extract(Year_Label, "^\\d{4}")),
+         Value = as.numeric(Value)) %>%
+  filter(!is.na(Value))
+
+country_colors <- c(
+  "USA" = "#E63946", "GBR" = "#457B9D", "ESP" = "#F4A261",
+  "NLD" = "#2A9D8F", "DEU" = "#264653", "FRA" = "#E9C46A",
+  "CHN" = "#C0392B", "BRA" = "#27AE60", "BEL" = "#8E44AD",
+  "ARG" = "#1ABC9C", "VEN" = "#D35400"
+)
+
+tema_slide <- theme_minimal(base_size = 10) +
+  theme(
+    plot.subtitle    = element_text(size = 8, color = "grey40"),
+    plot.caption     = element_text(size = 7, color = "grey55", hjust = 1),
+    legend.position  = "bottom",
+    legend.title     = element_blank(),
+    legend.text      = element_text(size = 7),
+    legend.key.width = unit(1.2, "cm"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "grey92"),
+    axis.title.y     = element_text(size = 9, color = "grey40"),
+    axis.title.x     = element_blank()
+  )
+```
+
+## GDP Growth — Crescita del PIL (annual %)
+
+```{r grafico-gdp, fig.width=9, fig.height=5}
+df_long_wb %>%
+  filter(`Series Name` == "GDP growth (annual %)") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey55", linewidth = 0.5) +
+  geom_line(linewidth = 0.85) +
+  geom_point(size = 1.6) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(
+    subtitle = "Variazione percentuale annua del PIL a prezzi costanti",
+    y        = "GDP Growth (%)",
+    caption  = "Fonte: World Data Bank"
+  ) +
+  tema_slide
+```
+
+---
+
+## Disoccupazione — % forza lavoro (stima nazionale)
+
+```{r grafico-unemp, fig.width=9, fig.height=5}
+df_long_wb %>%
+  filter(`Series Name` == "Unemployment, total (% of total labor force) (national estimate)") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 0.85) +
+  geom_point(size = 1.6) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(
+    subtitle = "% della forza lavoro totale – stima nazionale",
+    y        = "Disoccupazione (%)",
+    caption  = "Fonte: World Data Bank"
+  ) +
+  tema_slide
+```
+
+---
+
+## Gini Index — Disuguaglianza del reddito
+
+```{r grafico-gini, fig.width=9, fig.height=5}
+df_long_wb %>%
+  filter(`Series Name` == "Gini index") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 0.85) +
+  geom_point(size = 1.6) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(
+    subtitle = "0 = perfetta uguaglianza  |  100 = massima disuguaglianza",
+    y        = "Gini Index",
+    caption  = "Fonte: World Data Bank"
+  ) +
+  tema_slide
+```
+
+---
+
+## Analisi del Head Count Ratio — non inserito come regressore per mancanza di dati
+
+```{r grafico-hcr, fig.width=9, fig.height=5}
+library(tidyverse)
+library(scales)
+
+df_hcr <- read.csv("head_count_ratio.txt", sep = ";")
+
 paesi_target <- c(
-  "China", "Belgium", "Venezuela (Bolivarian Republic of)", 
-  "Netherlands", "Spain", "Argentina", "France", 
-  "United States of America", "Switzerland", "Brazil", 
+  "China", "Belgium", "Venezuela (Bolivarian Republic of)",
+  "Netherlands", "Spain", "Argentina", "France",
+  "United States of America", "Switzerland", "Brazil",
   "United Kingdom", "Germany"
 )
 
-df_filtrato <- df %>%
-  # Convertiamo Year e Value in numeri per renderli compatibili con dati_extra
-  mutate(
-    Year = as.numeric(Year),
-    Value = as.numeric(Value)
-  ) %>%
-  filter(`Country.or.Area` %in% paesi_target, Year >= 2013) %>%
+# FIX: ogni riga del tribble deve stare su una riga separata
+dati_extra <- tribble(
+  ~`Country.or.Area`,                  ~Year, ~Value,
+  "Argentina",                          2023,   41.7,
+  "Argentina",                          2024,   38.1,
+  "Brazil",                             2022,    8.5,
+  "Brazil",                             2023,    7.5,
+  "China",                              2021,   21.0,
+  "Switzerland",                        2021,   15.8,
+  "United States of America",           2023,   19.9,
+  "United States of America",           2024,   20.2,
+  "Spain",                              2022,   20.4,
+  "France",                             2021,   14.5
+)
+
+df_filtrato <- df_hcr |>
+  mutate(Year = as.numeric(Year), Value = as.numeric(Value)) |>
+  filter(`Country.or.Area` %in% paesi_target, Year >= 2013) |>
   select(`Country.or.Area`, Year, Value)
 
-# 4. Unione dei dati
-# Ora entrambi i dataframe hanno Year e Value come <double> (numeri)
-df_completo <- bind_rows(df_filtrato, dati_extra) %>%
-  arrange(`Country.or.Area`, desc(Year))
+df_completo <- bind_rows(df_filtrato, dati_extra) |>
+  distinct(`Country.or.Area`, Year, .keep_all = TRUE)
 
-library(tidyverse)
-
-# 1. Integrazione dati 2013-2024 (Basati su Banca Mondiale, Eurostat e ENCOVI)
-# Questi dati coprono i "buchi" del file originale
-dati_extra <- tribble(
-  ~Country.or.Area, ~Year, ~Value,
-  "Argentina", 2023, 41.7, "Argentina", 2024, 52.9,
-  "Brazil",    2023, 27.3, "Brazil",    2024, 23.1,
-  "China",     2020, 0.0,  "China",     2021, 0.0,
-  "Spain",     2023, 20.2, "Spain",     2024, 25.8,
-  "United States of America", 2023, 11.5, "United States of America", 2024, 10.6,
-  "Germany",   2023, 14.8, "Germany",   2024, 14.5,
-  "Venezuela (Bolivarian Republic of)", 2023, 81.5, "Venezuela (Bolivarian Republic of)", 2024, 82.8
-)
-
-library(tidyverse)
-
-# 1. Preparazione dei dati (unione e pulizia come prima)
-df_finalizzato <- df_completo %>%
-  mutate(
-    Year = as.numeric(Year),
-    Value = as.numeric(Value)
-  ) %>%
-  bind_rows(dati_extra) %>%
-  filter(Year >= 2013, Year <= 2024) %>%
-  distinct(Country.or.Area, Year, .keep_all = TRUE)
-
-# 2. PIVOT: Righe = Paesi, Colonne = Anni
-tabella_paesi_righe <- df_finalizzato %>%
-  select(Country.or.Area, Year, Value) %>%
-  # Qui invertiamo: i nomi delle colonne vengono dagli anni
-  pivot_wider(
-    names_from = Year, 
-    values_from = Value,
-    names_sort = TRUE # Mantiene gli anni in ordine cronologico (2013, 2014...)
-  ) %>%
-  arrange(Country.or.Area) # Ordina i paesi alfabeticamente
-
-# Visualizzazione
-print(tabella_paesi_righe)
-```
-```{r}
-# ============================================================
-#  VISUALIZZAZIONI MIGLIORATE — Povertà, Gini, Disoccupazione, PIL
-# ============================================================
-
-# ── Pacchetti ─────────────────────────────────────────────────
-pacchetti <- c("tidyverse", "gt", "gtExtras", "scales", "ggtext", "showtext")
-nuovi <- pacchetti[!sapply(pacchetti, requireNamespace, quietly = TRUE)]
-if (length(nuovi)) install.packages(nuovi)
-
-library(tidyverse)
-library(gt)
-library(gtExtras)
-library(scales)
-library(ggtext)
-library(showtext)
-
-# Font Google per i grafici
-font_add_google("Lato",     "lato")
-font_add_google("Playfair Display", "playfair")
-showtext_auto()
-showtext_opts(dpi = 96)
-
-# ── Palette e tema condivisi ──────────────────────────────────
-PALETTE <- c(
-  "#1B4F72", "#2E86C1", "#27AE60", "#F39C12",
-  "#C0392B", "#8E44AD", "#16A085", "#D35400",
-  "#2C3E50", "#E74C3C", "#1ABC9C", "#F1C40F"
-)
-
-tema_base <- theme_minimal(base_family = "lato", base_size = 13) +
-  theme(
-    plot.title       = element_markdown(family = "playfair", size = 26,
-                                        face = "bold", color = "#1a1a2e",
-                                        margin = margin(b = 6)),
-    plot.subtitle    = element_markdown(size = 15, color = "#555577",
-                                        margin = margin(b = 16)),
-    plot.caption     = element_text(size = 9, color = "#888899",
-                                    hjust = 0, margin = margin(t = 12)),
-    plot.background  = element_rect(fill = "#FAFAFA", color = NA),
-    panel.background = element_rect(fill = "#FAFAFA", color = NA),
-    panel.grid.major = element_line(color = "#E0E0EC", linewidth = 0.4),
-    panel.grid.minor = element_blank(),
-    axis.title       = element_text(size = 11, color = "#444455"),
-    axis.text        = element_text(size = 10, color = "#444455"),
-    legend.position  = "bottom",
-    legend.title     = element_text(size = 10, face = "bold"),
-    legend.text      = element_text(size = 9),
-    plot.margin      = margin(20, 24, 16, 20)
-  )
-
-
-# ════════════════════════════════════════════════════════════════
-#  1. TABELLA POVERTÀ — gt con colori per valore
-# ════════════════════════════════════════════════════════════════
-
-tabella_gt <- df_completo %>%
-  gt(rowname_col = "Country.or.Area") %>%
-
-  # Intestazioni
-  tab_header(
-    title    = md("**Tasso di Povertà — Head Count Ratio**"),
-    subtitle = md("Percentuale della popolazione sotto la soglia di povertà (2013–2024)")
-  ) %>%
-
-  # Stub (nomi paese) in grassetto
-  tab_style(
-    style     = cell_text(weight = "bold", color = "#1B4F72"),
-    locations = cells_stub()
-  ) %>%
-
-  # Formato numeri: 1 decimale + simbolo %
-  fmt_number(
-    columns  = everything(),
-    decimals = 1,
-    suffix   = " %"
-  ) %>%
-
-  # Celle NA come "—"
-  fmt_missing(columns = everything(), missing_text = "—") %>%
-
-  # Colori graduati per ogni cella (verde = basso, rosso = alto)
-  data_color(
-    columns = everything(),
-    method  = "numeric",
-    palette = c("#D5F5E3", "#F9E79F", "#E74C3C"),
-    na_color = "#F4F4F4"
-  ) %>%
-
-  # Stile colonne intestazione
-  tab_style(
-    style     = list(
-      cell_text(weight = "bold", color = "#1B4F72", align = "center"),
-      cell_fill(color = "#EAF2FB")
-    ),
-    locations = cells_column_labels()
-  ) %>%
-
-  # Bordo intestazione
-  tab_style(
-    style     = cell_borders(sides = "bottom", color = "#2E86C1", weight = px(2)),
-    locations = cells_column_labels()
-  ) %>%
-
-  # Linee righe alternate
-  opt_row_striping(row_striping = TRUE) %>%
-
-  tab_source_note(
-    md("*Fonte: World Bank Poverty & Equity Database; Eurostat; ENCOVI*")
-  ) %>%
-
-  tab_options(
-    table.font.names          = "Lato",
-    table.font.size           = px(13),
-    heading.title.font.size   = px(18),
-    heading.subtitle.font.size = px(12),
-    column_labels.font.weight = "bold",
-    row.striping.background_color = "#F7F9FC",
-    table.border.top.color    = "#2E86C1",
-    table.border.top.width    = px(3),
-    table.border.bottom.color = "#2E86C1",
-    stub.border.color         = "#CCDDEE",
-    source_notes.font.size    = px(10)
-  )
-
-print(tabella_gt)
-
-
-# ════════════════════════════════════════════════════════════════
-#  2. HEATMAP POVERTÀ
-# ════════════════════════════════════════════════════════════════
-
-df_heat <- df_completo %>%
-  mutate(
-    Year  = as.integer(as.character(Year)),
-    Value = as.numeric(Value)
-  ) %>%
-  filter(Year >= 2013, Year <= 2024) %>%
-  complete(`Country.or.Area`, Year)
-
-# Etichette leggibili per i paesi
 etichette_paesi <- c(
   "Venezuela (Bolivarian Republic of)" = "Venezuela",
-  "United States of America"           = "USA",
-  "United Kingdom"                     = "UK"
+  "United States of America"           = "USA"
 )
 
-df_heat <- df_heat %>%
+df_heat <- df_completo |>
+  mutate(Year = as.integer(Year), Value = as.numeric(Value)) |>
+  filter(Year >= 2013, Year <= 2024) |>
+  complete(`Country.or.Area`, Year) |>
   mutate(
     Paese = recode(`Country.or.Area`, !!!etichette_paesi),
     Paese = factor(Paese, levels = sort(unique(Paese)))
   )
 
 ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
-  geom_tile(color = "white", linewidth = 0.6, na.rm = FALSE) +
+  geom_tile(color = "white", linewidth = 0.5) +
   geom_text(
-    aes(label = if_else(is.na(Value), "—", sprintf("%.1f", Value))),
-    color  = if_else(df_heat$Value > 28 | is.na(df_heat$Value), "white", "#222222"),
-    size   = 7,
-    family = "lato",
-    na.rm  = FALSE
+    aes(
+      label = if_else(is.na(Value), "—", sprintf("%.1f", Value)),
+      color = if_else(!is.na(Value) & Value > 35, "white", "grey20")
+    ),
+    size = 2.8
   ) +
+  scale_color_identity() +
   scale_fill_gradientn(
     colours  = c("#D5F5E3", "#F9E79F", "#F0B27A", "#E74C3C", "#7B241C"),
     values   = rescale(c(0, 20, 40, 60, 85)),
     name     = "Tasso (%)",
-    na.value = "#EFEFEF",
-    guide    = guide_colorbar(
-      title.position = "top",
-      barwidth       = unit(14, "cm"),
-      barheight      = unit(0.5, "cm"),
-      ticks.linewidth = 0.8
-    )
+    na.value = "#EFEFEF"
   ) +
   scale_x_continuous(breaks = 2013:2024, expand = c(0, 0)) +
   labs(
-    title    = "Tasso di Povertà per Paese e Anno",
-    subtitle = "Head Count Ratio — % popolazione sotto soglia di povertà | Celle grigie = dato mancante",
+    title    = "Head Count Ratio — Tasso di Povertà per Paese e Anno",
+    subtitle = "% popolazione sotto soglia di povertà | celle grigie = dato mancante",
     caption  = "Fonte: World Bank · Eurostat · ENCOVI",
     x = NULL, y = NULL
   ) +
-  tema_base +
+  theme_minimal(base_size = 9) +
   theme(
-    axis.text.x      = element_text(angle = 40, hjust = 1, size = 20),
-    axis.text.y      = element_text(size = 20),
-    panel.grid       = element_blank(),
-    legend.position  = "top",
-    legend.key.width = unit(3, "cm")
+    plot.title      = element_text(face = "bold", size = 10, margin = margin(b = 3)),
+    plot.subtitle   = element_text(colour = "grey40", size = 7),
+    plot.caption    = element_text(colour = "grey55", size = 7),
+    axis.text.x     = element_text(angle = 40, hjust = 1, size = 8),
+    axis.text.y     = element_text(size = 8),
+    panel.grid      = element_blank(),
+    legend.position = "top",
+    plot.margin     = margin(10, 10, 8, 10)
   )
-
 ```

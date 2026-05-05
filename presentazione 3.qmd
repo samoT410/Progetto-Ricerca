@@ -23,18 +23,19 @@ format:
 # Introduzione
 Il fenomeno della fuga di cervelli rappresenta una sfida strutturale per l'economia. In questo report analizziamo i dati recenti utilizzando modelli di regressione lineare.
 
-# Analisi dei Dati
-Di seguito carichiamo i dati e visualizziamo la relazione tra investimenti in Ricerca e Sviluppo (R&S) e tasso di emigrazione qualificata.
+# Definizione formale della fuga di cervelli
+\begin{center}
 
-```{r}
-#| label: fig-emigrazione
-#| fig-cap: "Relazione tra Spesa in R&S e Emigrazione"
-#| echo: false
-library(ggplot2)
+"Brain drain refers to the permanent emigration or outflow of skilled and talented individuals from their home regions to seek better opportunities and prospects elsewhere. (European Commission, 2023)"
 
-# Esempio di grafico per PDF
-ggplot(mtcars, aes(x=wt, y=mpg)) +
-  geom_point(color="#2c3e50") +
-  geom_smooth(method="lm", se=TRUE, fill="#3498db", color="#2980b9") +
-  theme_minimal() +
-  labs(x = "Investimento (R&S)", y = "Tasso di Emigrazione")
+\end{center}
+
+
+
+# Analisi descrittiva dei Dati - Flussi migratori dall'Italia
+Di seguito carichiamo i grafici su occupazione e flussi migratori di italiani con alto livello di istruzione.
+
+# Tabella descrittiva dell'occupazione' con alta istruzione in Italia
+\setbeamertemplate{footline}{}
+
+

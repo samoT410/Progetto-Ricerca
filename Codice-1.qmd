@@ -5,82 +5,70 @@ format: html
 
 ```{r}
 # ============================================================
-#  Disoccupazione con alta istruzione - Solo Italia
-#  Fonte: disoccupati_con_alta_istruzione_vero.csv
+# Tabella formattata: Tasso di occupazione Italia 2013-2024
 # ============================================================
 
-# Installa i pacchetti se non presenti
-if (!requireNamespace("readr",  quietly = TRUE)) install.packages("readr")
-if (!requireNamespace("dplyr",  quietly = TRUE)) install.packages("dplyr")
-if (!requireNamespace("tidyr",  quietly = TRUE)) install.packages("tidyr")
-if (!requireNamespace("gt",     quietly = TRUE)) install.packages("gt")
-
-library(readr)
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 library(gt)
 
-# ── 1. Caricamento dati ───────────────────────────────────────
-df <- read_csv("disoccupati_con_alta_istruzione_vero.csv",
-               show_col_types = FALSE)
+# Carica il dataset
+df <- read_csv("occupazionevero3.csv")
 
-# ── 2. Filtra solo l'Italia (prima riga / Country Code = ITA) ─
-italia <- df |>
-  filter(`Country Code` == "ITA")
-
-# ── 3. Seleziona e riorganizza le colonne degli anni ──────────
-anni_cols <- names(italia)[grepl("\\[YR", names(italia))]
-
-italia_long <- italia |>
-  select(all_of(anni_cols)) |>
-  pivot_longer(
-    cols      = everything(),
-    names_to  = "Anno",
-    values_to = "Tasso (%)"
-  ) |>
+# Filtra Italia e porta in formato lungo
+italia_long <- df %>%
+  filter(`Country Name` == "Italy") %>%
+  select(starts_with(c("2013","2014","2015","2016","2017",
+                        "2018","2019","2020","2021","2022",
+                        "2023","2024"))) %>%
+  pivot_longer(everything(), names_to = "Anno", values_to = "Tasso") %>%
   mutate(
-    Anno      = sub(" \\[YR\\d+\\]", "", Anno),   # pulisce "2013 [YR2013]" → "2013"
-    Anno      = as.integer(Anno),
-    `Tasso (%)` = suppressWarnings(as.numeric(`Tasso (%)`))
-  ) |>
-  filter(!is.na(`Tasso (%)`))   # rimuove anni senza dato
+    Anno = as.integer(str_extract(Anno, "\\d{4}")),
+    Tasso = round(Tasso, 3),
+    Variazione = round(Tasso - lag(Tasso), 3),
+    Direzione = case_when(
+      is.na(Variazione) ~ "—",
+      Variazione > 0    ~ "▲",
+      Variazione < 0    ~ "▼",
+      TRUE              ~ "="
+    )
+  )
 
-# ── 4. Visualizza la tabella con {gt} ─────────────────────────
-tabella <- italia_long |>
-  gt() |>
+italia_long %>%
+  gt() %>%
   tab_header(
-    title    = md("**Disoccupazione con alta istruzione — Italia**"),
-    subtitle = md("*% della forza lavoro con istruzione avanzata*")
-  ) |>
+    title    = md("**Tasso di Occupazione — Italia**"),
+    subtitle = "Employment to population ratio, 15+, totale (%) · 2013–2024"
+  ) %>%
   cols_label(
-    Anno        = "Anno",
-    `Tasso (%)` = "Tasso (%)"
-  ) |>
-  fmt_number(
-    columns  = `Tasso (%)`,
-    decimals = 2
-  ) |>
-  data_color(
-    columns = `Tasso (%)`,
-    method  = "numeric",
-    palette = c("#d4f1d4", "#f7a7a6")   # verde basso → rosso alto
-  ) |>
+    Anno       = "Anno",
+    Tasso      = "Tasso (%)",
+    Variazione = "Variazione (pp)",
+    Direzione  = ""
+  ) %>%
+  fmt_number(columns = c(Tasso, Variazione), decimals = 3) %>%
+  sub_missing(columns = Variazione, missing_text = "—") %>%
   tab_style(
-    style     = cell_text(weight = "bold"),
+    style = cell_text(color = "#27AE60", weight = "bold"),
+    locations = cells_body(columns = Direzione, rows = Direzione == "▲")
+  ) %>%
+  tab_style(
+    style = cell_text(color = "#E63946", weight = "bold"),
+    locations = cells_body(columns = Direzione, rows = Direzione == "▼")
+  ) %>%
+  tab_style(
+    style = cell_fill(color = "#f0f4ff"),
+    locations = cells_body(rows = seq(1, nrow(italia_long), 2))
+  ) %>%
+  tab_style(
+    style = cell_text(color = "white", weight = "bold"),
     locations = cells_column_labels()
-  ) |>
-  tab_source_note(
-    source_note = "Fonte: World Bank — disoccupati_con_alta_istruzione_vero.csv"
-  ) |>
-  opt_table_font(font = "Arial") |>
-  opt_row_striping()
-
-# Mostra la tabella nel Viewer di Positron
-print(tabella)
-
-library(gt)
-
-gtsave(tabella, "tabella.png")
+  ) %>%
+  tab_options(
+    table.width = pct(70),
+    heading.background.color = "#264653",
+    heading.title.font.size = px(18),
+    column_labels.background.color = "#457B9D"
+  )
 ```
 ```{r}
 # Grafico a barre per trasferimento di italiani con alta istruzione all'estero

@@ -1,0 +1,40 @@
+---
+title: "Analisi Econometrica della Fuga di Cervelli"
+subtitle: "Determinanti e Impatti sui Sistemi d'Innovazione"
+author: ""
+date: last-modified
+lang: it
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+    geometry:
+      - top=30mm
+      - left=25mm
+      - right=25mm
+      - bottom=30mm
+    papersize: a4
+    header-includes: |
+      \usepackage{booktabs}
+      \usepackage{caption}
+---
+
+# Introduzione
+Il fenomeno della fuga di cervelli rappresenta una sfida strutturale per l'economia. In questo report analizziamo i dati recenti utilizzando modelli di regressione lineare.
+
+# Analisi dei Dati
+Di seguito carichiamo i dati e visualizziamo la relazione tra investimenti in Ricerca e Sviluppo (R&S) e tasso di emigrazione qualificata.
+
+```{r}
+#| label: fig-emigrazione
+#| fig-cap: "Relazione tra Spesa in R&S e Emigrazione"
+#| echo: false
+library(ggplot2)
+
+# Esempio di grafico per PDF
+ggplot(mtcars, aes(x=wt, y=mpg)) +
+  geom_point(color="#2c3e50") +
+  geom_smooth(method="lm", se=TRUE, fill="#3498db", color="#2980b9") +
+  theme_minimal() +
+  labs(x = "Investimento (R&S)", y = "Tasso di Emigrazione")

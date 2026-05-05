@@ -26,8 +26,12 @@ execute:
 # Introduzione e Dati sulla Disoccupazione
 
 ```{r}
-#| label: setup-disoccupazione
+# ============================================================
+#  Disoccupazione con alta istruzione - Solo Italia
+#  Fonte: disoccupati_con_alta_istruzione_vero.csv
+# ============================================================
 
+# Installa i pacchetti se non presenti
 if (!requireNamespace("readr",  quietly = TRUE)) install.packages("readr")
 if (!requireNamespace("dplyr",  quietly = TRUE)) install.packages("dplyr")
 if (!requireNamespace("tidyr",  quietly = TRUE)) install.packages("tidyr")
@@ -38,12 +42,15 @@ library(dplyr)
 library(tidyr)
 library(gt)
 
+# ── 1. Caricamento dati ───────────────────────────────────────
 df <- read_csv("disoccupati_con_alta_istruzione_vero.csv",
                show_col_types = FALSE)
 
+# ── 2. Filtra solo l'Italia (prima riga / Country Code = ITA) ─
 italia <- df |>
   filter(`Country Code` == "ITA")
 
+# ── 3. Seleziona e riorganizza le colonne degli anni ──────────
 anni_cols <- names(italia)[grepl("\\[YR", names(italia))]
 
 italia_long <- italia |>
@@ -54,18 +61,19 @@ italia_long <- italia |>
     values_to = "Tasso (%)"
   ) |>
   mutate(
-    Anno      = sub(" \\[YR\\d+\\]", "", Anno), 
+    Anno      = sub(" \\[YR\\d+\\]", "", Anno),   # pulisce "2013 [YR2013]" → "2013"
     Anno      = as.integer(Anno),
     `Tasso (%)` = suppressWarnings(as.numeric(`Tasso (%)`))
   ) |>
-  filter(!is.na(`Tasso (%)`))  
+  filter(!is.na(`Tasso (%)`))   # rimuove anni senza dato
 
+# ── 4. Visualizza la tabella con {gt} ─────────────────────────
 tabella <- italia_long |>
   gt() |>
   tab_header(
-    title    = md("**Disoccupazione con alta istruzione — Italia**"),
-    subtitle = md("*% della forza lavoro con istruzione avanzata*")
-  ) |>
+    title    = md("**Tasso di Occupazione — Italia**"),
+    subtitle = "Employment to population ratio, 15+, totale (%) · 2013–2024"
+  ) %>%
   cols_label(
     Anno        = "Anno",
     `Tasso (%)` = "Tasso (%)"
@@ -77,10 +85,10 @@ tabella <- italia_long |>
   data_color(
     columns = `Tasso (%)`,
     method  = "numeric",
-    palette = c("#d4f1d4", "#f7a7a6") 
+    palette = c("#d4f1d4", "#f7a7a6")   # verde basso → rosso alto
   ) |>
   tab_style(
-    style     = cell_text(weight = "bold"),
+    style = cell_text(color = "white", weight = "bold"),
     locations = cells_column_labels()
   ) |>
   tab_source_note(
@@ -89,15 +97,13 @@ tabella <- italia_long |>
   opt_table_font(font = "Arial") |>
   opt_row_striping()
 
-# Mostra la tabella nel PDF
-tabella
+# Mostra la tabella nel Viewer di Positron
+print(tabella)
 
-# Salva la tabella esternamente
+library(gt)
+
 gtsave(tabella, "tabella.png")
 ```
-
-# Analisi Iscrizioni AIRE (Istat)
-
 ```{r}
 #| label: grafico-iscritti-totale
 #| fig-width: 8
@@ -328,11 +334,7 @@ df_long_wb %>%
 
 ## Disoccupazione — % forza lavoro (stima nazionale)
 
-```{r}
-#| label: grafico-unemp
-#| fig-width: 9
-#| fig-height: 5
-
+```{r grafico-unemp, fig.width=9, fig.height=5}
 df_long_wb %>%
   filter(`Series Name` == "Unemployment, total (% of total labor force) (national estimate)") %>%
   ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
@@ -347,6 +349,8 @@ df_long_wb %>%
   ) +
   tema_slide
 ```
+
+---
 
 ## Gini Index — Disuguaglianza del reddito
 
@@ -457,3 +461,4 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
     plot.margin     = margin(10, 10, 8, 10)
   )
 ```
+

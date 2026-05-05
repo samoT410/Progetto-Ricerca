@@ -73,7 +73,7 @@ tabella <- italia_long |>
   tab_header(
     title    = md("**Tasso di Occupazione — Italia**"),
     subtitle = "Employment to population ratio, 15+, totale (%) · 2013–2024"
-  ) %>%
+  ) |>
   cols_label(
     Anno        = "Anno",
     `Tasso (%)` = "Tasso (%)"
@@ -97,13 +97,12 @@ tabella <- italia_long |>
   opt_table_font(font = "Arial") |>
   opt_row_striping()
 
-# Mostra la tabella nel Viewer di Positron
-print(tabella)
-
-library(gt)
-
-gtsave(tabella, "tabella.png")
+# Stampa la tabella nel PDF
+tabella
 ```
+
+# Analisi Iscrizioni AIRE (Istat)
+
 ```{r}
 #| label: grafico-iscritti-totale
 #| fig-width: 8
@@ -258,8 +257,6 @@ p_paesi <- ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = pae
          linetype = guide_legend(nrow = 2))
 
 p_paesi
-
-ggsave("istat_tavola12_alta_istruzione.png", plot = p_paesi, width = 10, height = 6.5, dpi = 200)
 ```
 
 # Contesto Macroeconomico Internazionale
@@ -334,7 +331,11 @@ df_long_wb %>%
 
 ## Occupazione — % forza lavoro (stima nazionale)
 
-```{r grafico-unemp, fig.width=9, fig.height=5}
+```{r}
+#| label: grafico-unemp
+#| fig-width: 9
+#| fig-height: 5
+
 df_long_wb %>%
   filter(`Series Name` == "Unemployment, total (% of total labor force) (national estimate)") %>%
   ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
@@ -461,4 +462,3 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
     plot.margin     = margin(10, 10, 8, 10)
   )
 ```
-

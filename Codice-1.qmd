@@ -527,28 +527,28 @@ print(tabella_risultati)
 
 
 ```{r}
-# modello panel per saggiare la differenza tra livelli di istruzione
-# 1. Caricamento librerie
 library(tidyverse)
 
-# 2. Caricamento e pulizia dati occupazione
-dati_occ_raw <- read.csv("occupazionevero3.csv", check.names = FALSE)
+dati_occ_raw <- read_csv("occupazionevero3.csv", show_col_types = FALSE)
+
+# Convert all year columns to character before pivot_longer
+dati_occ_raw <- dati_occ_raw %>%
+  mutate(across(contains("[YR"), as.character))
 
 dati_occ_long <- dati_occ_raw %>%
   pivot_longer(
-    cols = contains("[YR"), 
-    names_to = "year", 
+    cols = contains("[YR"),
+    names_to = "year_raw",
     values_to = "employment_rate"
   ) %>%
   mutate(
-    year = as.numeric(gsub("\\[YR|\\]", "", str_extract(year, "\\[YR\\d{4}\\]"))),
+    year = as.numeric(str_extract(year_raw, "\\d{4}")),
     employment_rate = as.numeric(employment_rate),
     country = `Country Name`
   ) %>%
-  filter(!is.na(employment_rate))
+  filter(!is.na(employment_rate), !is.na(country))
 
-# 3. Costruzione del modello Panel (Two-Way Fixed Effects)
-# Qui il Belgio e il 2013 rimarranno i termini di riferimento (baseline)
+# 3. Modello Panel
 model_occ_fe <- lm(employment_rate ~ factor(country) + factor(year), data = dati_occ_long)
 
 # 4. Estrazione automatica dei risultati in tabella

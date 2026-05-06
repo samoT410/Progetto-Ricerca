@@ -227,12 +227,13 @@ library(tidyverse)
 
 # 2. Caricamento e pulizia dati
 dati_raw <- read.csv("Livello di istruzione.csv")
+dati_raw <- dati_raw[,-c(1:5)]
 
 # 2. Pivot usando le posizioni se i nomi falliscono
 dati_long <- dati_raw %>%
   pivot_longer(
-    # Seleziona tutte le colonne tranne le prime 4
-    cols = -(1:4), 
+    
+    cols = contains("X"), 
     names_to = "year",
     values_to = "education_level"
   ) %>%
@@ -580,8 +581,8 @@ wb_to_long <- function(df, value_name, series_code) {
 # ── 4. REGRESSORI ────────────────────────────────────────────────────────────
 
 indicatori <- read.csv(PATH_INDICATORI, check.names = FALSE, stringsAsFactors = FALSE)
-occ_raw    <- read.csv(PATH_OCCUPAZ,    skip = 1, check.names = FALSE, stringsAsFactors = FALSE)
-istr_raw   <- read.csv(PATH_ISTRUZ,     skip = 1, check.names = FALSE, stringsAsFactors = FALSE)
+occ_raw    <- read.csv(PATH_OCCUPAZ,    skip = 0, check.names = FALSE, stringsAsFactors = FALSE)
+istr_raw   <- read.csv(PATH_ISTRUZ,     skip = 0, check.names = FALSE, stringsAsFactors = FALSE)
 
 gini_long  <- wb_to_long(indicatori, "gini",       "SI.POV.GINI")
 gdp_long   <- wb_to_long(indicatori, "gdp_growth", "NY.GDP.MKTP.KD.ZG")

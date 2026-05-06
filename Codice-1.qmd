@@ -474,25 +474,20 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
 # 1. Caricamento librerie
 library(tidyverse)
 
-# 2. Caricamento e pulizia dati
-# Sostituisci 'Livello di istruzione.csv' con il percorso corretto se necessario
 dati_raw <- read.csv("Livello di istruzione.csv", check.names = FALSE)
 
 dati_long <- dati_raw %>%
-  # Trasformiamo le colonne degli anni in una singola colonna 'year'
   pivot_longer(
-    cols = contains("[YR"), 
-    names_to = "year", 
+    cols = -c(`Country Name`, `Country Code`, `Indicator Name`, `Indicator Code`),
+    names_to = "year",
     values_to = "education_level"
   ) %>%
-  # Pulizia del nome dell'anno (es. da "2013 [YR2013]" a 2013)
   mutate(
-    year = as.numeric(gsub("\\[YR|\\]", "", str_extract(year, "\\[YR\\d{4}\\]"))),
+    year = as.numeric(stringr::str_extract(year, "\\d{4}")),
     education_level = as.numeric(education_level),
     country = `Country Name`
   ) %>%
-  # Rimuoviamo eventuali valori mancanti per il modello
-  filter(!is.na(education_level))
+  filter(!is.na(year) & !is.na(education_level))
 
 # 3. Costruzione del modello Panel (Two-Way Fixed Effects)
 # Nota: L'uso di factor(country) e factor(year) stima gli effetti fissi per entità e tempo

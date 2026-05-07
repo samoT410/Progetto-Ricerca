@@ -1,0 +1,121 @@
+---
+title: "Untitled"
+format: html
+---
+
+
+```{r}
+# TRAFOGHIAMO IL DATASET cancellazioni_mdr IN FORMATO LONG
+library(tidyverse)
+library(readxl)
+
+# Leggi il file
+df <- read_excel("cancellazioni_mdr.xlsx")
+
+# Il dataset ha due colonne "2014" (duplicato) — rinominiamole prima
+# Visualizza i nomi originali
+names(df)
+# [1] NA      "2014"  "2014"  "2015"  "2016" ...
+
+# Rinomina la prima colonna (paesi) e gestisci il doppio 2014
+df_clean <- df |>
+  rename(paese = 1) |>                         # prima colonna = paese
+  setNames(c("paese",
+             "2013", "2014",                 # due colonne 2014
+             "2015", "2016", "2017", "2018",
+             "2019", "2020", "2021", "2022",
+             "2023", "2024"))
+
+# Pivot in formato long
+df_long <- df_clean |>
+  pivot_longer(
+    cols      = -paese,
+    names_to  = "anno",
+    values_to = "cancellazioni"
+  ) |>
+  mutate(anno = str_remove(anno, "[ab]$"),      # togli il suffisso "a"/"b" dal 2014
+         anno = as.integer(anno))
+
+# Controlla il risultato
+glimpse(df_long)
+head(df_long, 20)
+
+# Creiamo un file in formato csv
+write_csv(df_long, "cancellazioni_mdr_long.csv")
+```
+
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+
+# ── 1. Caricamento ───────────────────────────────────────────────────────────
+regressori    <- read.csv("regressori_list.csv", stringsAsFactors = FALSE)
+cancellazioni <- read.csv("cancellazioni_mdr_long.csv", stringsAsFactors = FALSE)
+
+# ── 2. Pulizia: rimozione righe di metadati (senza Country Code valido) ──────
+regressori_clean <- regressori |>
+  filter(!is.na(Country.Code) & Country.Code != "" &
+         !is.na(Time)         & !is.na(Value))
+
+# ── 3. Pivot da long a wide: ogni Serie diventa una colonna ─────────────────
+#    Usiamo Series.Code come nome colonna (più compatto di Series.Name)
+regressori_wide <- regressori_clean |>
+  mutate(Time = as.integer(Time)) |>
+  select(Country.Name, Country.Code, Time, Series.Code, Value) |>
+  pivot_wider(
+    names_from  = Series.Code,
+    values_from = Value
+  )
+
+# ── 4. Dizionario nomi paese (IT → EN) ───────────────────────────────────────
+paese_map <- c(
+  "Regno Unito"            = "United Kingdom",
+  "Germania"               = "Germany",
+  "Francia"                = "France",
+  "Svizzera"               = "Switzerland",
+  "Spagna"                 = "Spain",
+  "Brasile"                = "Brazil",
+  "Stati Uniti d'America"  = "United States",
+  "Belgio"                 = "Belgium",
+  "Paesi Bassi"            = "Netherlands",
+  "Australia"              = "Australia",
+  "Austria"                = "Austria",
+  "Irlanda"                = "Ireland"
+)
+
+cancellazioni <- cancellazioni |>
+  mutate(Country.Name = paese_map[paese])
+
+# ── 5. Join ──────────────────────────────────────────────────────────────────
+dataset_unito <- regressori_wide |>
+  left_join(
+    cancellazioni |> select(Country.Name, anno, cancellazioni),
+    by = c("Country.Name" = "Country.Name", "Time" = "anno")
+  )
+
+# ── 6. Verifica ──────────────────────────────────────────────────────────────
+glimpse(dataset_unito)
+
+# Righe senza cancellazioni (dovrebbe essere 0)
+dataset_unito |>
+  filter(is.na(cancellazioni)) |>
+  distinct(Country.Name, Time)
+
+# Carica la libreria
+library(dplyr)
+
+# Supponiamo che il tuo dataset si chiami 'df'
+dataset_unito <- dataset_unito %>%
+  rename(
+    "Educational attainment, at least completed lower secondary, population 25+, total (%) (cumulative)" = SE.SEC.CUAT.LO.ZS,
+    "GDP growth (annual %)" = NY.GDP.MKTP.KD.ZG,
+    "Gini index" = SI.POV.GINI,
+    "Labor force with advanced education (% of total working-age population with advanced education)" = SL.TLF.ADVN.ZS,
+    "Current education expenditure, total (% of total expenditure in public institutions)" = SE.XPD.CTOT.ZS
+  )
+
+# Creiamo un file in formato csv
+write_csv(dataset_unito, "dataset_unito.csv")
+```

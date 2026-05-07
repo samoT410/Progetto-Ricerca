@@ -31,7 +31,6 @@ execute:
 #  Fonte: disoccupati_con_alta_istruzione_vero.csv
 # ============================================================
 
-# Installa i pacchetti se non presenti
 if (!requireNamespace("readr",  quietly = TRUE)) install.packages("readr")
 if (!requireNamespace("dplyr",  quietly = TRUE)) install.packages("dplyr")
 if (!requireNamespace("tidyr",  quietly = TRUE)) install.packages("tidyr")
@@ -43,10 +42,10 @@ library(tidyr)
 library(gt)
 
 # ── 1. Caricamento dati ───────────────────────────────────────
-df <- read_csv("disoccupati_con_alta_istruzione_vero.csv",
+df <- read_csv("occupazione_italia_vero2.csv",
                show_col_types = FALSE)
 
-# ── 2. Filtra solo l'Italia (prima riga / Country Code = ITA) ─
+# ── 2. Filtra solo l'Italia (Country Code = ITA) ─
 italia <- df |>
   filter(`Country Code` == "ITA")
 
@@ -61,11 +60,11 @@ italia_long <- italia |>
     values_to = "Tasso (%)"
   ) |>
   mutate(
-    Anno      = sub(" \\[YR\\d+\\]", "", Anno),   # pulisce "2013 [YR2013]" → "2013"
+    Anno      = sub(" \\[YR\\d+\\]", "", Anno),
     Anno      = as.integer(Anno),
     `Tasso (%)` = suppressWarnings(as.numeric(`Tasso (%)`))
   ) |>
-  filter(!is.na(`Tasso (%)`))   # rimuove anni senza dato
+  filter(!is.na(`Tasso (%)`))
 
 # ── 4. Visualizza la tabella con {gt} ─────────────────────────
 tabella <- italia_long |>
@@ -85,19 +84,18 @@ tabella <- italia_long |>
   data_color(
     columns = `Tasso (%)`,
     method  = "numeric",
-    palette = c("#d4f1d4", "#f7a7a6")   # verde basso → rosso alto
+    palette = c("#d4f1d4", "#f7a7a6")
   ) |>
   tab_style(
     style = cell_text(color = "white", weight = "bold"),
     locations = cells_column_labels()
   ) |>
   tab_source_note(
-    source_note = "Fonte: World Bank — disoccupati_con_alta_istruzione_vero.csv"
+    source_note = "Fonte: World Bank — occupazione_italia_vero2.csv"
   ) |>
   opt_table_font(font = "Arial") |>
   opt_row_striping()
 
-# Stampa la tabella nel PDF
 tabella
 ```
 
@@ -118,7 +116,7 @@ percorso_file <- "tavola12_serie_istr.xlsx"
 raw <- read_excel(percorso_file, sheet = "Tavola12", col_names = FALSE)
 
 anni     <- 2013:2024
-cols_alto <- 2 + (seq_along(anni) - 1) * 4 + 2 
+cols_alto <- 2 + (seq_along(anni) - 1) * 4 + 2
 
 riga26   <- as.numeric(raw[26, cols_alto])
 
@@ -174,7 +172,7 @@ estrai_sezione <- function(df, riga_inizio, riga_fine = nrow(df)) {
   blocco <- blocco[!grepl("^totale$", blocco[[1]], ignore.case = TRUE), ]
   blocco <- blocco[!is.na(blocco[[1]]) & nchar(trimws(blocco[[1]])) > 0, ]
   paesi <- trimws(blocco[[1]])
-  alto_cols <- 2 + (seq_along(anni) - 1) * 4 + 2 
+  alto_cols <- 2 + (seq_along(anni) - 1) * 4 + 2
   mat <- blocco[, alto_cols, drop = FALSE]
   mat <- mutate_all(as.data.frame(mat), as.numeric)
   colnames(mat) <- anni
@@ -184,7 +182,7 @@ estrai_sezione <- function(df, riga_inizio, riga_fine = nrow(df)) {
     filter(!is.na(n))
 }
 
-riga_sep <- riga_cancellazioni - 2  
+riga_sep <- riga_cancellazioni - 2
 
 iscrizioni    <- estrai_sezione(raw, riga_iscrizioni,    riga_fine = riga_sep) |> mutate(tipo = "Iscrizioni")
 cancellazioni <- estrai_sezione(raw, riga_cancellazioni, riga_fine = nrow(raw)) |> mutate(tipo = "Cancellazioni")
@@ -205,7 +203,7 @@ dati_filt <- dati_completi |>
 n_paesi  <- length(top_paesi)
 palette  <- setNames(
   c("#378ADD","#D85A30","#1D9E75","#D4537E","#BA7517","#7F77DD", "#C0C0C0", "#dfe44f", "#ff7f00", "#9467bd", "#8c564b", "#e377c2")
-  [seq_len(n_paesi)],top_paesi)
+  [seq_len(n_paesi)], top_paesi)
 tipi_linea <- setNames(
   rep(c("solid","dashed","dotted"), length.out = n_paesi),
   top_paesi
@@ -264,31 +262,36 @@ p_paesi
 ```{r}
 #| label: carica-dati-wb
 
+# ── FIX: regressori_list.csv è in formato LONG (colonne: Series Name, Country Code, Time, Value)
+# Non ha colonne tipo "2013 [YR2013]", quindi NON serve pivot_longer.
+
+library(tidyverse)
+
 df_wb <- read.csv(
-  "Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv",
+  "regressori_list.csv",
   check.names = FALSE,
   na.strings  = c("..", "NA", "")
 )
 
-target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","CHN","BRA","BEL","ARG","VEN")
-year_cols <- grep("^\\d{4}", colnames(df_wb), value = TRUE)
+target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","CHN","BRA","BEL","ARG","IRL")
 
+# Il file ha colonne: Series Name, Series Code, Country Name, Country Code, Time, Time Code, Value
 df_long_wb <- df_wb %>%
   filter(`Country Code` %in% target_countries,
          `Series Name`  %in% c("Gini index",
                                 "GDP growth (annual %)",
                                 "Unemployment, total (% of total labor force) (national estimate)")) %>%
-  select(`Country Code`, `Series Name`, all_of(year_cols)) %>%
-  pivot_longer(cols = all_of(year_cols), names_to = "Year_Label", values_to = "Value") %>%
-  mutate(Year  = as.integer(str_extract(Year_Label, "^\\d{4}")),
-         Value = as.numeric(Value)) %>%
-  filter(!is.na(Value))
+  mutate(
+    Year  = as.integer(`Time`),
+    Value = as.numeric(`Value`)
+  ) %>%
+  filter(!is.na(Value), !is.na(Year))
 
 country_colors <- c(
   "USA" = "#E63946", "GBR" = "#457B9D", "ESP" = "#F4A261",
   "NLD" = "#2A9D8F", "DEU" = "#264653", "FRA" = "#E9C46A",
   "CHN" = "#C0392B", "BRA" = "#27AE60", "BEL" = "#8E44AD",
-  "ARG" = "#1ABC9C", "VEN" = "#D35400"
+  "ARG" = "#1ABC9C", "IRL" = "#D35400"
 )
 
 tema_slide <- theme_minimal(base_size = 10) +
@@ -439,7 +442,7 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
   scale_color_identity() +
   scale_fill_gradientn(
     colours  = c("#D5F5E3", "#F9E79F", "#F0B27A", "#E74C3C", "#7B241C"),
-    values   = rescale(c(0, 20, 40, 60, 85)),
+    values   = scales::rescale(c(0, 20, 40, 60, 85)),
     name     = "Tasso (%)",
     na.value = "#EFEFEF"
   ) +
@@ -461,47 +464,35 @@ ggplot(df_heat, aes(x = Year, y = Paese, fill = Value)) +
     legend.position = "top",
     plot.margin     = margin(10, 10, 8, 10)
   )
-
 ```
 
 
-# Test panel di confronto valori per i regressori 
-
+# Test panel di confronto valori per i regressori
 
 ```{r}
-# modello panel per saggiare la differenza tra livelli di istruzione
-
-# 1. Caricamento librerie
 library(tidyverse)
 
-dati_raw <- read.csv("Livello di istruzione.csv", check.names = FALSE)
+dati_raw <- read.csv("regressori_list.csv", check.names = FALSE,
+                     na.strings = c("..", "NA", ""))
 
+# regressori_list.csv e' in formato LONG: colonne Series Name, Country Name, Time, Value
+# Filtra la serie relativa all'istruzione
 dati_long <- dati_raw %>%
-  pivot_longer(
-    cols = -c(`Country Name`, `Country Code`, `Indicator Name`, `Indicator Code`),
-    names_to = "year",
-    values_to = "education_level"
-  ) %>%
+  filter(grepl("Educational attainment|education", `Series Name`, ignore.case = TRUE)) %>%
   mutate(
-    year = as.numeric(stringr::str_extract(year, "\\d{4}")),
-    education_level = as.numeric(education_level),
-    country = `Country Name`
+    year            = as.numeric(`Time`),
+    education_level = as.numeric(`Value`),
+    country         = `Country Name`
   ) %>%
   filter(!is.na(year) & !is.na(education_level))
 
-# 3. Costruzione del modello Panel (Two-Way Fixed Effects)
-# Nota: L'uso di factor(country) e factor(year) stima gli effetti fissi per entità e tempo
 model_fe <- lm(education_level ~ factor(country) + factor(year), data = dati_long)
 
-# Carichiamo la libreria per una visualizzazione pulita
-library(tidyverse)
-
-# 1. Creazione del dataframe con i tuoi risultati
 tabella_risultati <- data.frame(
   Variabile = c(
-    "Brasile", "Cina", "Francia", "Germania", "Paesi Bassi", 
+    "Brasile", "Cina", "Francia", "Germania", "Paesi Bassi",
     "Spagna", "Svizzera", "Regno Unito", "Stati Uniti", "Venezuela",
-    "Anno 2014", "Anno 2015", "Anno 2016", "Anno 2017", "Anno 2018", 
+    "Anno 2014", "Anno 2015", "Anno 2016", "Anno 2017", "Anno 2018",
     "Anno 2019", "Anno 2020", "Anno 2021", "Anno 2022", "Anno 2023", "Anno 2024"
   ),
   Coefficiente = c(
@@ -514,24 +505,23 @@ tabella_risultati <- data.frame(
   )
 )
 
-# 2. Aggiunta della colonna con la spiegazione empirica
 tabella_risultati <- tabella_risultati %>%
   mutate(Spiegazione = case_when(
     grepl("Anno", Variabile) ~ paste("Rispetto al 2013, il livello globale di istruzione è aumentato di", Coefficiente, "punti."),
     TRUE ~ paste("Rispetto al Belgio, questo paese ha mediamente il", Coefficiente, "% in più/meno di istruiti.")
   ))
 
-# Visualizzazione della tabella
 print(tabella_risultati)
 ```
 
-
 ```{r}
 library(tidyverse)
+library(broom)
 
-dati_occ_raw <- read_csv("occupazionevero3.csv", show_col_types = FALSE)
+# ── FIX: occupazionevero3.csv ha colonne wide tipo "2013 [YR2013]"
+# Usiamo contains("[YR") per il pivot_longer
+dati_occ_raw <- read_csv("occupazione_italia_vero2.csv", show_col_types = FALSE)
 
-# Convert all year columns to character before pivot_longer
 dati_occ_raw <- dati_occ_raw %>%
   mutate(across(contains("[YR"), as.character))
 
@@ -548,12 +538,7 @@ dati_occ_long <- dati_occ_raw %>%
   ) %>%
   filter(!is.na(employment_rate), !is.na(country))
 
-# 3. Modello Panel
 model_occ_fe <- lm(employment_rate ~ factor(country) + factor(year), data = dati_occ_long)
-
-# 4. Estrazione automatica dei risultati in tabella
-# Invece di scriverli a mano, usiamo 'broom' per rendere tutto automatico
-library(broom)
 
 tabella_occupazione <- tidy(model_occ_fe) %>%
   select(term, estimate, p.value) %>%
@@ -571,60 +556,49 @@ tabella_occupazione <- tidy(model_occ_fe) %>%
     )
   )
 
-# Visualizzazione
 print(tabella_occupazione)
 ```
-
 
 ```{r}
 library(tidyverse)
 library(broom)
 
-# 1. Caricamento dati
-dati_multi <- read.csv("Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv", check.names = FALSE)
+# regressori_list.csv e in formato LONG: riutilizziamo lo stesso file
+dati_multi <- read.csv(
+  "regressori_list.csv",
+  check.names = FALSE,
+  na.strings  = c("..", "NA", "")
+)
 
-# Funzione migliorata: pulisce e controlla se ci sono abbastanza dati
 prepara_panel_sicuro <- function(df, nome_serie) {
   temp <- df %>%
     filter(`Series Name` == nome_serie) %>%
-    pivot_longer(
-      cols = contains("[YR"),
-      names_to = "year",
-      values_to = "value"
-    ) %>%
     mutate(
-      year = as.numeric(gsub("\\[YR|\\]", "", str_extract(year, "\\[YR\\d{4}\\]"))),
-      value = as.numeric(value),
+      year    = as.numeric(`Time`),
+      value   = as.numeric(`Value`),
       country = `Country Name`
     ) %>%
-    filter(!is.na(value))
-  
-  # Controllo critico: abbiamo almeno 2 paesi e 2 anni?
-  if(length(unique(temp$country)) < 2 || length(unique(temp$year)) < 2) {
-    stop(paste("Errore: La serie", nome_serie, "ha dati insufficienti per un modello panel (serve più di un paese/anno)."))
+    filter(!is.na(value), !is.na(year))
+
+  if (length(unique(temp$country)) < 2 || length(unique(temp$year)) < 2) {
+    stop(paste("Errore: La serie", nome_serie,
+               "ha dati insufficienti per un modello panel."))
   }
   return(temp)
 }
 
 # --- MODELLO 1: INDICE DI GINI ---
-# Usa il nome esatto "Gini index"
 data_gini <- prepara_panel_sicuro(dati_multi, "Gini index")
 model_gini <- lm(value ~ factor(country) + factor(year), data = data_gini)
 
 # --- MODELLO 2: PIL PRO CAPITE ---
-# Usa il nome esatto "GDP per capita growth (annual %)"
-data_gdp <- prepara_panel_sicuro(dati_multi, "GDP per capita growth (annual %)")
+data_gdp <- prepara_panel_sicuro(dati_multi, "GDP growth (annual %)")
 model_gdp <- lm(value ~ factor(country) + factor(year), data = data_gdp)
 
-# 2. Visualizzazione Risultati
 summary(model_gini)
 summary(model_gdp)
 
-
-library(tidyverse)
-library(broom)
-
-# --- 1. TABELLA RIASSUNTIVA: INDICE DI GINI ---
+# --- TABELLA GINI ---
 tabella_gini_clean <- tidy(model_gini) %>%
   select(term, estimate, p.value) %>%
   mutate(
@@ -635,13 +609,13 @@ tabella_gini_clean <- tidy(model_gini) %>%
       TRUE            ~ "No"
     ),
     Spiegazione = case_when(
-      grepl("year", term) ~ paste("Rispetto al 2013, la disuguaglianza globale è variata di", round(estimate, 2), "punti."),
+      grepl("year", term)    ~ paste("Rispetto al 2013, la disuguaglianza globale è variata di", round(estimate, 2), "punti."),
       grepl("country", term) ~ paste("Rispetto agli USA, questo paese ha un Gini di", round(estimate, 2), "punti diverso."),
       TRUE ~ "Punto di riferimento (USA, 2013)"
     )
   )
 
-# --- 2. TABELLA RIASSUNTIVA: PIL PRO CAPITE (Crescita %) ---
+# --- TABELLA PIL PRO CAPITE ---
 tabella_gdp_clean <- tidy(model_gdp) %>%
   select(term, estimate, p.value) %>%
   mutate(
@@ -652,13 +626,12 @@ tabella_gdp_clean <- tidy(model_gdp) %>%
       TRUE            ~ "No"
     ),
     Spiegazione = case_when(
-      grepl("year", term) ~ paste("Rispetto al 2013, la crescita media globale è variata del", round(estimate, 2), "%."),
+      grepl("year", term)    ~ paste("Rispetto al 2013, la crescita media globale è variata del", round(estimate, 2), "%."),
       grepl("country", term) ~ paste("Rispetto agli USA, questo paese cresce mediamente il", round(estimate, 2), "% in più/meno."),
       TRUE ~ "Punto di riferimento (USA, 2013)"
     )
   )
 
-# --- Visualizzazione ---
 print("--- TABELLA INDICE DI GINI ---")
 print(tabella_gini_clean)
 

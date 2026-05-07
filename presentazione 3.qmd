@@ -170,7 +170,7 @@ p_iscritti <- ggplot(dati, aes(x = factor(anno), y = n)) +
   )
 
 p_iscritti
-  ```
+```
 
 ## Flussi per destivazione e anni 
 ```{r}

@@ -2,8 +2,8 @@
 title: "Untitled"
 format: html
 ---
-
-
+  
+  
 ```{r}
 # TRAFOGHIAMO IL DATASET cancellazioni_mdr IN FORMATO LONG
 library(tidyverse)
@@ -47,6 +47,7 @@ write_csv(df_long, "cancellazioni_mdr_long.csv")
 
 
 ```{r}
+#UNIAMO I DUE DATASET: regressori_list.csv + cancellazioni_mdr_long.csv
 library(dplyr)
 library(tidyr)
 
@@ -57,7 +58,7 @@ cancellazioni <- read.csv("cancellazioni_mdr_long.csv", stringsAsFactors = FALSE
 # ── 2. Pulizia: rimozione righe di metadati (senza Country Code valido) ──────
 regressori_clean <- regressori |>
   filter(!is.na(Country.Code) & Country.Code != "" &
-         !is.na(Time)         & !is.na(Value))
+           !is.na(Time)         & !is.na(Value))
 
 # ── 3. Pivot da long a wide: ogni Serie diventa una colonna ─────────────────
 #    Usiamo Series.Code come nome colonna (più compatto di Series.Name)
@@ -118,4 +119,146 @@ dataset_unito <- dataset_unito %>%
 
 # Creiamo un file in formato csv
 write_csv(dataset_unito, "dataset_unito.csv")
+```
+
+
+```{r}
+library(lme4)
+library(tidyverse)
+
+# Caricamento del dataset
+dati <- read.csv("dataset_unito.csv")
+
+# Filtraggio per il periodo richiesto (2013-2024)
+dati_subset <- dati %>% 
+  filter(Time >= 2013 & Time <= 2024) %>%
+  # Rinominiamo la variabile target per comodità
+  rename(y = cancellazioni)
+
+# Nota: I modelli Mixed-effects gestiscono i dati mancanti eliminando le righe incomplete.
+# È consigliabile verificare quanti NA sono presenti nei regressori scelti.
+# Modello con Intercetta Casuale per Paese
+
+# Modello con Intercetta e Pendenza Casuale
+modello_slopes <- lmer(y ~ ed_attain_low_sec + gdp_growth + gini_index + 
+                         labor_adv_edu + edu_exp_public + Time + 
+                         (1 + gdp_growth + labor_adv_edu | Country.Code), 
+                       data = dati_subset, 
+                       REML = FALSE)
+
+summary(modello_slopes)
+
+```
+
+
+```{r}
+# Creazione del modello con effetti fissi per Paese e Anno
+# Caricamento librerie necessarie
+if (!require("plm")) install.packages("plm")
+library(plm)
+
+# 1. Caricamento del dataset
+# Assicurati che il file sia nella tua directory di lavoro
+df <- read.csv("dataset_unito.csv")
+
+# 2. Pulizia e Preparazione
+# Trasformiamo la colonna 'Time' e 'Country.Code' nei formati corretti
+df$Time <- as.numeric(df$Time)
+
+# Filtriamo per l'intervallo temporale richiesto (es. 2013-2024)
+df_sub <- subset(df, Time >= 2013 & Time <= 2024)
+
+# Trasformiamo il dataframe in un pdata.frame (specifico per modelli panel)
+# Indici: Country.Code (individui) e Time (tempo)
+p_df <- pdata.frame(df_sub, index = c("Country.Code", "Time"))
+
+# 3. Definizione del Modello Panel
+# Utilizziamo il modello a effetti fissi (within)
+# y = cancellazioni
+# x = ed_attain_low_sec, gdp_growth, gini_index, labor_adv_edu, edu_exp_public
+
+formula_panel <- cancellazioni ~ ed_attain_low_sec + gdp_growth + 
+  gini_index + labor_adv_edu + 
+  edu_exp_public
+
+# Stima del modello con effetti fissi per paese
+modello_fe <- plm(formula_panel, 
+                  data = p_df, 
+                  model = "within")
+
+# 4. Visualizzazione dei risultati
+summary(modello_fe)
+```
+
+
+```{r}
+# MODELLO PLM - PANEL DATA ANALYSIS
+
+# Installazione pacchetti (solo la prima volta)
+install.packages(c("plm", "readr", "dplyr", "lmtest", "sandwich"))
+
+# Librerie
+library(plm)
+library(readr)
+library(dplyr)
+library(lmtest)
+library(sandwich)
+
+# Import dataset
+df <- read_csv("dataset_unito.csv")
+
+# Controllo struttura
+str(df)
+
+# Creazione panel data
+pdata <- pdata.frame(
+  df,
+  index = c("Country.Code", "Time")
+)
+
+# Modello Fixed Effects (within)
+model_fe <- plm(
+  cancellazioni ~
+    ed_attain_low_sec +
+    gdp_growth +
+    gini_index +
+    labor_adv_edu +
+    edu_exp_public,
+  
+  data = pdata,
+  model = "within"
+)
+
+# Risultati
+summary(model_fe)
+
+# Errori standard robusti
+coeftest(
+  model_fe,
+  vcov = vcovHC(model_fe, type = "HC1")
+)
+
+# -----------------------------
+# RANDOM EFFECTS
+# -----------------------------
+
+model_re <- plm(
+  cancellazioni ~
+    ed_attain_low_sec +
+    gdp_growth +
+    gini_index +
+    labor_adv_edu +
+    edu_exp_public,
+  
+  data = pdata,
+  model = "random"
+)
+
+summary(model_re)
+
+# -----------------------------
+# TEST HAUSMAN
+# -----------------------------
+
+phtest(model_fe, model_re)
 ```

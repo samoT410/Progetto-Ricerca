@@ -109,11 +109,11 @@ library(dplyr)
 # Supponiamo che il tuo dataset si chiami 'df'
 dataset_unito <- dataset_unito %>%
   rename(
-    "Educational attainment, at least completed lower secondary, population 25+, total (%) (cumulative)" = SE.SEC.CUAT.LO.ZS,
-    "GDP growth (annual %)" = NY.GDP.MKTP.KD.ZG,
-    "Gini index" = SI.POV.GINI,
-    "Labor force with advanced education (% of total working-age population with advanced education)" = SL.TLF.ADVN.ZS,
-    "Current education expenditure, total (% of total expenditure in public institutions)" = SE.XPD.CTOT.ZS
+    ed_attain_low_sec = SE.SEC.CUAT.LO.ZS,
+    gdp_growth        = NY.GDP.MKTP.KD.ZG,
+    gini_index        = SI.POV.GINI,
+    labor_adv_edu     = SL.TLF.ADVN.ZS,
+    edu_exp_public    = SE.XPD.CTOT.ZS
   )
 
 # Creiamo un file in formato csv

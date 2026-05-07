@@ -1,4 +1,4 @@
-Country.Name,Country.Code,Time,"Educational attainment, at least completed lower secondary, population 25+, total (%) (cumulative)",GDP growth (annual %),Gini index,Labor force with advanced education (% of total working-age population with advanced education),"Current education expenditure, total (% of total expenditure in public institutions)",cancellazioni
+Country.Name,Country.Code,Time,ed_attain_low_sec,gdp_growth,gini_index,labor_adv_edu,edu_exp_public,cancellazioni
 United States,USA,2013,95.2045288085938,2.11783009790057,40.9,74.971,NA,1376
 United States,USA,2014,95.2634735107422,2.52381981363968,41.7,74.352,NA,1398
 United States,USA,2015,95.3349685668945,2.94555045484053,41.5,73.844,91.3460311889648,1391

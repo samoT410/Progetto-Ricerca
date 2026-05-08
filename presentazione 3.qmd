@@ -285,9 +285,117 @@ identificati in:
   \item Spesa per l'istruzione
 \end{itemize}
 
-# 
+# Analisi descrittiva dei regressori 
+```{r}
+library(tidyverse)
+
+# Caricamento dati
+df_wb <- read.csv(
+  "regressori_list.csv",
+  check.names = FALSE,
+  na.strings  = c("..", "NA", "")
+)
+
+target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","CHN","BRA","BEL","ARG","IRL")
+
+# Pulizia e Formattazione (Includendo tutte le variabili trovate nel CSV)
+df_long_wb <- df_wb %>%
+  filter(`Country Code` %in% target_countries) %>%
+  # Selezioniamo tutte le serie rilevanti escludendo metadati del database
+  filter(!`Series Name` %in% c("Data from database: World Development Indicators", 
+                               "Last Updated: 04/08/2026", 
+                               NA)) %>%
+  mutate(
+    Year  = as.integer(`Time`),
+    Value = as.numeric(`Value`)
+  ) %>%
+  filter(!is.na(Value), !is.na(Year))
+
+# Definizione colori e tema (come da tua richiesta)
+country_colors <- c(
+  "USA" = "#E63946", "GBR" = "#457B9D", "ESP" = "#F4A261",
+  "NLD" = "#2A9D8F", "DEU" = "#264653", "FRA" = "#E9C46A",
+  "CHN" = "#C0392B", "BRA" = "#27AE60", "BEL" = "#8E44AD",
+  "ARG" = "#1ABC9C", "IRL" = "#D35400"
+)
+
+tema_slide <- theme_minimal(base_size = 10) +
+  theme(
+    plot.title       = element_text(face = "bold", size = 11),
+    plot.subtitle    = element_text(size = 8, color = "grey40"),
+    plot.caption     = element_text(size = 7, color = "grey55", hjust = 1),
+    legend.position  = "bottom",
+    legend.title     = element_blank(),
+    legend.text      = element_text(size = 7),
+    legend.key.width = unit(1.2, "cm"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "grey92"),
+    axis.title.y     = element_text(size = 9, color = "grey40"),
+    axis.title.x     = element_blank()
+  )
+```
+
+## GDP Growth — Crescita del PIL (annual %)
+
+```{r}
+#| label: grafico-gdp
+#| fig-width: 9
+#| fig-height: 5
+
+df_long_wb %>%
+  filter(`Series Name` == "GDP growth (annual %)") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey55", linewidth = 0.5) +
+  geom_line(linewidth = 0.85) +
+  geom_point(size = 1.6) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(
+    subtitle = "Variazione percentuale annua del PIL a prezzi costanti",
+    y        = "GDP Growth (%)",
+    caption  = "Fonte: World Data Bank"
+  ) +
+  tema_slide
+```
+
+
+```{r}
+# Identifichiamo le variabili (esclusa la crescita del PIL)
+variabili_da_plottare <- df_long_wb %>% 
+  filter(`Series Name` != "Crescita del PIL (% annuale)") %>%
+  pull(`Series Name`) %>% 
+  unique()
+
+# Creazione dei grafici tramite un ciclo
+for (var in variabili_da_plottare) {
+  
+  p <- df_long_wb %>%
+    filter(`Series Name` == var) %>%
+    ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+    geom_line(linewidth = 1, alpha = 0.8) +
+    geom_point(size = 1.5) +
+    scale_color_manual(values = country_colors) +
+    # Usiamo str_wrap per evitare che i titoli lunghi escano dal grafico
+    labs(
+      title = str_wrap(var, width = 70),
+      subtitle = "Variazione annuale per paese (Dati World Bank)",
+      y = "Valore",
+      x = "Anno",
+      caption = "Grafico generato automaticamente"
+    ) +
+    tema_slide +
+    scale_x_continuous(breaks = seq(min(df_long_wb$Year), max(df_long_wb$Year), by = 2))
+  
+  # Visualizza il grafico
+  print(p)
+}
+```
+
+
+
+# Modelli panel di confronto dei regressori nei vari Paesi
 \begin{center}
-*Modelli panel di confronto dei regressori nei vari Paesi*
+*Di seguito i modelli di confronto dei valori dei regressori nei diversi Paesi di destinazione dei laureati italiani*
 \end{center}
 
 

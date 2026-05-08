@@ -638,3 +638,325 @@ print(tabella_gini_clean)
 print("--- TABELLA CRESCITA PIL PRO CAPITE ---")
 print(tabella_gdp_clean)
 ```
+
+# modello regressioe 
+```{r}
+# =============================================================================
+#  FUGA DEI CERVELLI — Modello di Regressione Panel a Effetti Fissi
+#  Autori: Soddu, Nassih, Parentela, Trebbi, Zanirato
+#
+#  Variabile dipendente (Y):
+#    Emigrati italiani con alta istruzione verso i paesi target
+#    Fonte: ISTAT Tavola 12 — sezione CANCELLAZIONI, colonna "alto"
+#
+#  Regressori (X, indicizzati per paese e anno):
+#    gini       — Indice di Gini
+#    educ_sec   — % pop. 25+ con almeno istruzione secondaria
+#    gdp_growth — Crescita del PIL (% annua)
+#    emp_ratio  — Tasso di occupazione 15+ (%)
+#
+#  Effetti fissi: paese + anno (two-way within estimator)
+#
+#  Dummy eventi:
+#    covid            — 2020–2021, tutti i paesi
+#    brexit           — GBR dal 2016 (referendum)
+#    venezuela_crisis — VEN dal 2017 (iperinflazione/collasso)
+#    argentina_crisis — ARG dal 2018 (crisi valutaria/FMI)
+#    china_lockdown   — CHN anno 2022 (COVID-zero)
+# =============================================================================
+
+
+# ── 0. Pacchetti ─────────────────────────────────────────────────────────────
+
+pkgs <- c("readxl","dplyr","tidyr","stringr","plm","lmtest","sandwich","ggplot2","zoo","tibble")
+for (p in pkgs) if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+
+library(readxl); library(dplyr); library(tidyr); library(stringr)
+library(plm);    library(lmtest); library(sandwich); library(ggplot2)
+library(zoo);    library(tibble)
+
+
+# ── 1. PERCORSI FILE ─────────────────────────────────────────────────────────
+# Modifica se i file si trovano in una sottocartella (es. "data/tavola12_serie_istr.xlsx")
+
+PATH_TAVOLA12   <- "tavola12_serie_istr.xlsx"
+PATH_INDICATORI <- "Indicatori GIni, DIsoccuazione, GDP, GDP Pro Capite ecc World Data Bank.csv"
+PATH_OCCUPAZ    <- "occupazionevero3.csv"
+PATH_ISTRUZ     <- "Livello di istruzione.csv"
+
+ANNI          <- 2013:2024
+PAESI_TARGET  <- c("USA","GBR","ESP","NLD","DEU","FRA","CHN","BRA","BEL","ARG","VEN","CHE")
+
+
+# ── 2. VARIABILE DIPENDENTE: TAVOLA 12 ───────────────────────────────────────
+#
+#  Struttura NOTA del foglio "Tavola12" (59 colonne, 84 righe):
+#    Riga  1  : titolo
+#    Riga  2  : anni (celle unite: 2013 in col 2, 2014 in col 6, ...)
+#    Riga  3  : sotto-intestazioni (basso / medio / alto / totale) x 12 anni
+#    Riga  4  : "ISCRIZIONI"
+#    Righe 5-25  : paesi (iscrizioni)
+#    Riga 26  : Totale iscrizioni
+#    Riga 28  : intestazione anni (ripetuta)
+#    Riga 29  : sotto-intestazioni (ripetute)
+#    Riga 30  : "CANCELLAZIONI"
+#    Righe 31-51 : paesi (cancellazioni)
+#    Riga 52  : Totale cancellazioni
+#
+#  Colonne "alto" per anno (1-indexed): 4, 8, 12, ..., 48
+#  (3a colonna di ogni blocco da 4, a partire dalla col 2)
+# -----------------------------------------------------------------------------
+
+raw_xl <- read_excel(PATH_TAVOLA12, sheet = "Tavola12", col_names = FALSE)
+
+# Indici 0-based per dplyr: col "alto" di ogni anno
+# Anno 2013 -> colonna 4 (1-based) -> indice 4 in select (readxl usa nomi "...1","...2",...)
+alto_cols_idx <- seq(4, by = 4, length.out = length(ANNI))   # 4,8,12,...,48
+
+# Mappa nomi ISTAT -> ISO-3
+paese_map <- c(
+  "Germania"              = "DEU",
+  "Regno Unito"           = "GBR",
+  "Svizzera"              = "CHE",
+  "Brasile"               = "BRA",
+  "Francia"               = "FRA",
+  "Stati Uniti d'America" = "USA",
+  "Spagna"                = "ESP",
+  "Argentina"             = "ARG",
+  "Venezuela"             = "VEN",
+  "Belgio"                = "BEL",
+  "Paesi Bassi"           = "NLD",
+  "Cina"                  = "CHN"
+)
+
+# Righe 31-51 = dati CANCELLAZIONI (R indicizza da 1, raw_xl riga 31 = Excel riga 31)
+canc_raw <- raw_xl[31:51, ]
+
+# Seleziona col 1 (nome paese) + colonne "alto"
+canc_sel <- canc_raw[, c(1, alto_cols_idx)]
+names(canc_sel) <- c("paese", as.character(ANNI))
+
+y_long <- canc_sel |>
+  filter(paese %in% names(paese_map)) |>
+  mutate(iso3 = paese_map[paese]) |>
+  select(iso3, as.character(ANNI)) |>
+  pivot_longer(-iso3, names_to = "anno", values_to = "y_emigrati") |>
+  mutate(
+    anno       = as.integer(anno),
+    y_emigrati = suppressWarnings(as.numeric(y_emigrati))
+  ) |>
+  filter(!is.na(y_emigrati))
+
+cat("Y caricato:", nrow(y_long), "osservazioni,",
+    n_distinct(y_long$iso3), "paesi\n")
+print(sort(unique(y_long$iso3)))
+
+
+# ── 3. HELPER: World Bank wide -> long ───────────────────────────────────────
+
+wb_to_long <- function(df, value_name, series_code) {
+  anni_cols <- names(df)[str_detect(names(df), "\\[YR")]
+  df |>
+    filter(`Series Code` == series_code) |>
+    select(`Country Code`, all_of(anni_cols)) |>
+    pivot_longer(all_of(anni_cols), names_to = "anno", values_to = value_name) |>
+    mutate(
+      anno        = as.integer(str_extract(anno, "\\d{4}")),
+      !!value_name := suppressWarnings(as.numeric(get(value_name))),
+      iso3        = `Country Code`
+    ) |>
+    select(iso3, anno, all_of(value_name)) |>
+    filter(!is.na(iso3), iso3 != "Country Code", anno %in% ANNI)
+}
+
+
+# ── 4. REGRESSORI ────────────────────────────────────────────────────────────
+
+indicatori <- read.csv(PATH_INDICATORI, check.names = FALSE, stringsAsFactors = FALSE)
+occ_raw    <- read.csv(PATH_OCCUPAZ,    skip = 0, check.names = FALSE, stringsAsFactors = FALSE)
+istr_raw   <- read.csv(PATH_ISTRUZ,     skip = 0, check.names = FALSE, stringsAsFactors = FALSE)
+
+gini_long  <- wb_to_long(indicatori, "gini",       "SI.POV.GINI")
+gdp_long   <- wb_to_long(indicatori, "gdp_growth", "NY.GDP.MKTP.KD.ZG")
+emp_long   <- wb_to_long(occ_raw,  "emp_ratio", "SL.EMP.TOTL.SP.ZS") |> distinct(iso3, anno, .keep_all = TRUE)
+educ_long  <- wb_to_long(istr_raw, "educ_sec",  "SE.SEC.CUAT.LO.ZS") |> distinct(iso3, anno, .keep_all = TRUE)
+
+cat("Regressori: Gini(", nrow(gini_long), "), GDP(", nrow(gdp_long),
+    "), Occ.(", nrow(emp_long), "), Istr.(", nrow(educ_long), ")\n")
+
+
+# ── 5. MERGE ─────────────────────────────────────────────────────────────────
+
+griglia <- expand.grid(iso3 = PAESI_TARGET, anno = ANNI, stringsAsFactors = FALSE)
+
+panel_df <- griglia |>
+  left_join(y_long,    by = c("iso3","anno")) |>
+  left_join(gini_long, by = c("iso3","anno")) |>
+  left_join(gdp_long,  by = c("iso3","anno")) |>
+  left_join(emp_long,  by = c("iso3","anno")) |>
+  left_join(educ_long, by = c("iso3","anno")) |>
+  arrange(iso3, anno)
+
+cat("\nPanel completo:",
+    nrow(panel_df), "obs |",
+    n_distinct(panel_df$iso3), "paesi |",
+    n_distinct(panel_df$anno), "anni\n")
+cat("NA - Y:", sum(is.na(panel_df$y_emigrati)),
+    " Gini:", sum(is.na(panel_df$gini)),
+    " GDP:",  sum(is.na(panel_df$gdp_growth)),
+    " Occ:",  sum(is.na(panel_df$emp_ratio)),
+    " Istr:", sum(is.na(panel_df$educ_sec)), "\n\n")
+
+
+# ── 6. DUMMY EVENTI ──────────────────────────────────────────────────────────
+#
+#  Razionale delle scelte:
+#  - covid            : lockdown 2020-21, blocco migrazioni globali
+#  - brexit           : dal referendum 2016, incertezza per i lavoratori EU in UK
+#  - venezuela_crisis : dal 2017, iperinflazione >1000%, collasso economico
+#  - argentina_crisis : dal 2018, crisi valutaria, piano FMI, svalutazione 50%
+#  - china_lockdown   : 2022, politica COVID-zero prolungata, expat rientrati
+
+panel_df <- panel_df |>
+  mutate(
+    covid            = as.integer(anno %in% c(2020, 2021)),
+    brexit           = as.integer(iso3 == "GBR" & anno >= 2016),
+    venezuela_crisis = as.integer(iso3 == "VEN" & anno >= 2017),
+    argentina_crisis = as.integer(iso3 == "ARG" & anno >= 2018),
+    china_lockdown   = as.integer(iso3 == "CHN" & anno == 2022)
+  )
+
+
+# ── 7. INTERPOLAZIONE LINEARE (Gini ed Educazione) ───────────────────────────
+#  Il Gini World Bank e i dati educazione vengono aggiornati ogni 2-3 anni.
+#  Usiamo na.approx() di zoo per interpolazione lineare intra-paese.
+#  Per usare solo osservazioni complete (list-wise), commenta questo blocco.
+
+panel_df <- panel_df |>
+  group_by(iso3) |>
+  arrange(anno) |>
+  mutate(
+    gini     = na.approx(gini,     na.rm = FALSE, rule = 2),
+    educ_sec = na.approx(educ_sec, na.rm = FALSE, rule = 2)
+  ) |>
+  ungroup()
+
+cat("NA dopo interpolazione - Gini:", sum(is.na(panel_df$gini)),
+    " Istruzione:", sum(is.na(panel_df$educ_sec)), "\n\n")
+
+
+# ── 8. DATASET FINALE ────────────────────────────────────────────────────────
+
+panel_model_df <- panel_df |>
+  filter(!is.na(y_emigrati), !is.na(gdp_growth)) |>
+  mutate(log_y = log(y_emigrati + 1))
+
+cat("Osservazioni nel modello:", nrow(panel_model_df),
+    "| Paesi:", n_distinct(panel_model_df$iso3), "\n\n")
+
+pdata <- pdata.frame(panel_model_df, index = c("iso3", "anno"))
+
+
+# ── 9. MODELLO FE TWO-WAY ────────────────────────────────────────────────────
+#
+#  log(Y_it) = alpha_i + lambda_t
+#            + b1*Gini_it + b2*Educ_it + b3*GDP_it + b4*Emp_it
+#            + d1*covid_t + d2*brexit_it + d3*venezuela_it
+#            + d4*argentina_it + d5*china_it + e_it
+
+formula_fe <- log_y ~ gini + educ_sec + gdp_growth + emp_ratio +
+  covid + brexit + venezuela_crisis + argentina_crisis + china_lockdown
+
+fe_model <- plm(formula_fe, data = pdata, effect = "twoways", model = "within")
+
+
+# ── 10. OUTPUT PRINCIPALE ────────────────────────────────────────────────────
+
+cat("=================================================================\n")
+cat("        MODELLO PANEL - EFFETTI FISSI TWO-WAY\n")
+cat("=================================================================\n\n")
+print(summary(fe_model))
+
+# F-test: FE vs Pooled OLS
+pooled_model <- plm(formula_fe, data = pdata, model = "pooling")
+cat("\n--- F-test: Effetti Fissi vs Pooled OLS ---\n")
+print(pFtest(fe_model, pooled_model))
+
+
+# ── 11. SE ROBUSTI (cluster per paese) ───────────────────────────────────────
+
+cat("\n=================================================================\n")
+cat("   COEFFICIENTI CON SE ROBUSTI (cluster per paese)\n")
+cat("=================================================================\n\n")
+coef_robust <- coeftest(fe_model,
+                        vcov = vcovHC(fe_model, type = "HC1", cluster = "group"))
+print(coef_robust)
+
+
+# ── 12. TEST DIAGNOSTICI ─────────────────────────────────────────────────────
+
+cat("\n--- Test autocorrelazione seriale (Breusch-Godfrey) ---\n")
+tryCatch(print(pbgtest(fe_model)), error = function(e) cat("N/D:", e$message, "\n"))
+
+cat("\n--- Test dipendenza cross-sezionale (Pesaran CD) ---\n")
+tryCatch(print(pcdtest(fe_model, test = "cd")), error = function(e) cat("N/D:", e$message, "\n"))
+
+# Test di Hausman: FE vs RE
+re_model <- tryCatch(
+  plm(formula_fe, data = pdata, effect = "twoways", model = "random"),
+  error = function(e) { cat("RE non stimabile:", e$message, "\n"); NULL }
+)
+if (!is.null(re_model)) {
+  cat("\n--- Test di Hausman (FE vs RE) ---\n")
+  print(phtest(fe_model, re_model))
+}
+
+
+# ── 13. GRAFICI ───────────────────────────────────────────────────────────────
+
+## 13a. Andamento Y per paese
+p1 <- ggplot(panel_model_df, aes(x = anno, y = log_y, colour = iso3, group = iso3)) +
+  geom_line(linewidth = 0.8) + geom_point(size = 1.5) +
+  scale_x_continuous(breaks = ANNI) +
+  labs(title   = "Emigrati italiani con alta istruzione (log)",
+       x = "Anno", y = "log(emigrati + 1)", colour = "Paese",
+       caption = "Fonte: ISTAT Tavola 12 - Cancellazioni, colonna 'alto'") +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+print(p1)
+
+## 13b. Coefficienti con CI robusti
+coef_df <- data.frame(
+  variabile = rownames(coef_robust),
+  stima     = coef_robust[, 1],
+  se        = coef_robust[, 2],
+  stringsAsFactors = FALSE
+) |>
+  mutate(ci_lo = stima - 1.96*se, ci_hi = stima + 1.96*se,
+         sig   = ifelse(abs(stima/se) > 1.96, "p < 0.05", "n.s."))
+
+p2 <- ggplot(coef_df, aes(x = reorder(variabile, stima), y = stima, colour = sig)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = ci_lo, ymax = ci_hi), width = 0.25, linewidth = 0.8) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  coord_flip() +
+  scale_colour_manual(values = c("p < 0.05" = "#d73027", "n.s." = "#999999")) +
+  labs(title = "Coefficienti stimati - FE Two-Way (SE robusti)",
+       x = NULL, y = "Stima (su log Y)", colour = NULL) +
+  theme_minimal(base_size = 11)
+print(p2)
+
+## 13c. Residui vs fitted
+resid_df <- data.frame(fitted = as.numeric(fitted(fe_model)),
+                       res    = as.numeric(residuals(fe_model)))
+p3 <- ggplot(resid_df, aes(x = fitted, y = res)) +
+  geom_point(alpha = 0.6, colour = "#2c7fb8") +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "red") +
+  labs(title = "Residui vs Valori Adattati", x = "Fitted", y = "Residui") +
+  theme_minimal(base_size = 11)
+print(p3)
+
+cat("\n=================================================================\n")
+cat("  Script completato.\n")
+cat("=================================================================\n")
+```

@@ -91,7 +91,7 @@ tabella <- italia_long |>
     locations = cells_column_labels()
   ) |>
   tab_source_note(
-    source_note = "Fonte: World Bank — occupazione_italia_vero2.csv"
+    source_note = "Fonte: World Bank.csv"
   ) |>
   opt_table_font(font = "Arial") |>
   opt_row_striping()

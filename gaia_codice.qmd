@@ -2,8 +2,7 @@
 title: "Untitled"
 format: html
 ---
-  
-  
+
 ```{r}
 # TRAFOGHIAMO IL DATASET cancellazioni_mdr IN FORMATO LONG
 library(tidyverse)
@@ -121,144 +120,94 @@ dataset_unito <- dataset_unito %>%
 write_csv(dataset_unito, "dataset_unito.csv")
 ```
 
-
 ```{r}
-library(lme4)
+# 1. Caricamento pacchetti necessari
+if (!require("plm")) install.packages("plm")
+if (!require("tidyverse")) install.packages("tidyverse")
+
+library(plm)
 library(tidyverse)
 
-# Caricamento del dataset
-dati <- read.csv("dataset_unito.csv")
-
-# Filtraggio per il periodo richiesto (2013-2024)
-dati_subset <- dati %>% 
-  filter(Time >= 2013 & Time <= 2024) %>%
-  # Rinominiamo la variabile target per comodità
-  rename(y = cancellazioni)
-
-# Nota: I modelli Mixed-effects gestiscono i dati mancanti eliminando le righe incomplete.
-# È consigliabile verificare quanti NA sono presenti nei regressori scelti.
-# Modello con Intercetta Casuale per Paese
-
-# Modello con Intercetta e Pendenza Casuale
-modello_slopes <- lmer(y ~ ed_attain_low_sec + gdp_growth + gini_index + 
-                         labor_adv_edu + edu_exp_public + Time + 
-                         (1 + gdp_growth + labor_adv_edu | Country.Code), 
-                       data = dati_subset, 
-                       REML = FALSE)
-
-summary(modello_slopes)
-
-```
-
-
-```{r}
-# Creazione del modello con effetti fissi per Paese e Anno
-# Caricamento librerie necessarie
-if (!require("plm")) install.packages("plm")
-library(plm)
-
-# 1. Caricamento del dataset
-# Assicurati che il file sia nella tua directory di lavoro
+# 2. Caricamento e pulizia dati
 df <- read.csv("dataset_unito.csv")
 
-# 2. Pulizia e Preparazione
-# Trasformiamo la colonna 'Time' e 'Country.Code' nei formati corretti
-df$Time <- as.numeric(df$Time)
+# Creazione variabili dummy per eventi storici
+df <- df %>%
+  mutate(
+    # Dummy Brexit: 1 per GBR dal 2016 (voto) o 2020 (uscita effettiva)
+    brexit = if_else(Country.Code == "GBR" & Time >= 2016, 1, 0),
+    # Dummy COVID-19: impatto globale sulla mobilità 2020-2021
+    covid = if_else(Time %in% c(2020, 2021), 1, 0)
+  )
 
-# Filtriamo per l'intervallo temporale richiesto (es. 2013-2024)
-df_sub <- subset(df, Time >= 2013 & Time <= 2024)
+# Gestione valori mancanti (esempio: rimozione o interpolazione)
+# Il modello plm non accetta NA nelle variabili del modello
+df_clean <- df %>% drop_na(cancellazioni, gdp_growth, gini_index)
 
-# Trasformiamo il dataframe in un pdata.frame (specifico per modelli panel)
-# Indici: Country.Code (individui) e Time (tempo)
-p_df <- pdata.frame(df_sub, index = c("Country.Code", "Time"))
+# 3. Definizione della struttura Panel
+# 'index' specifica la dimensione individuale (Country) e temporale (Time)
+p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
 
-# 3. Definizione del Modello Panel
-# Utilizziamo il modello a effetti fissi (within)
-# y = cancellazioni
-# x = ed_attain_low_sec, gdp_growth, gini_index, labor_adv_edu, edu_exp_public
+# 4. MODELLO A EFFETTI FISSI (Within)
+# Studia come le variazioni delle variabili indipendenti entro lo stesso paese 
+# influenzano le cancellazioni nel tempo.
+modello_fe <- plm(cancellazioni ~ gdp_growth + gini_index + ed_attain_low_sec + brexit + covid, 
+                 data = p_df, 
+                 model = "within")
 
-formula_panel <- cancellazioni ~ ed_attain_low_sec + gdp_growth + 
-  gini_index + labor_adv_edu + 
-  edu_exp_public
-
-# Stima del modello con effetti fissi per paese
-modello_fe <- plm(formula_panel, 
-                  data = p_df, 
-                  model = "within")
-
-# 4. Visualizzazione dei risultati
+# 5. Output dei risultati
 summary(modello_fe)
-```
 
 
-```{r}
-# MODELLO PLM - PANEL DATA ANALYSIS
+# MODELLO A EFFETTI RANDOM
+modello_re <- plm(cancellazioni ~ gdp_growth + gini_index + ed_attain_low_sec + brexit + covid, 
+                 data = p_df, 
+                 model = "random")
+summary(modello_re)
 
-# Installazione pacchetti (solo la prima volta)
-install.packages(c("plm", "readr", "dplyr", "lmtest", "sandwich"))
+# 6. Test di Hausman
+# Confronta il modello a Effetti Fissi con quello a Effetti Random
+phtest(modello_fe, modello_re)
 
-# Librerie
-library(plm)
-library(readr)
-library(dplyr)
-library(lmtest)
-library(sandwich)
+# PROVIAMO AD AGGIUNGERE ALTRE VARIABILI DUMMY
 
-# Import dataset
-df <- read_csv("dataset_unito.csv")
+# 1. Aggiungi le nuove variabili dummy al dataframe originale (df)
+df <- df %>%
+  mutate(
+    
+    confine = if_else(Country.Code %in% c("AUT", "FRA", "CHE"), 1, 0), # Paesi confinanti
+    
+    anglo = if_else(Country.Code %in% c("USA", "GBR", "IRL", "AUS"), 1, 0), # Paesi anglosassoni
+    
+    ireland_shock = if_else(Country.Code == "IRL" & Time == 2015, 1, 0),   # Dummy per lo shock economico irlandese del 2015
+  )
 
-# Controllo struttura
-str(df)
+# 2. IMPORTANTE: Ricrea l'oggetto panel (p_df) partendo dal dataframe aggiornato
+# Rimuoviamo eventuali NA nelle variabili che useremo nel modello
+df_clean <- df %>% drop_na(cancellazioni, gdp_growth, gini_index, ed_attain_low_sec)
 
-# Creazione panel data
-pdata <- pdata.frame(
-  df,
-  index = c("Country.Code", "Time")
-)
+p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
 
-# Modello Fixed Effects (within)
-model_fe <- plm(
-  cancellazioni ~
-    ed_attain_low_sec +
-    gdp_growth +
-    gini_index +
-    labor_adv_edu +
-    edu_exp_public,
-  
-  data = pdata,
-  model = "within"
-)
+# 3. Esegui il modello ad Effetti Random
+modello_re_extended <- plm(cancellazioni ~ gdp_growth + gini_index + ed_attain_low_sec + 
+                           brexit + covid + confine + anglo + ireland_shock, 
+                           data = p_df, 
+                           model = "random")
 
-# Risultati
-summary(model_fe)
+# 4. Visualizza i risultati
+summary(modello_re_extended)
 
-# Errori standard robusti
-coeftest(
-  model_fe,
-  vcov = vcovHC(model_fe, type = "HC1")
-)
+# 1. Stima del modello ottimizzato (senza 'confine' e 'ireland_shock')
+modello_re_final <- plm(cancellazioni ~ gdp_growth + gini_index + ed_attain_low_sec + 
+                        brexit + covid + anglo, 
+                        data = p_df, 
+                        model = "random")
 
-# -----------------------------
-# RANDOM EFFECTS
-# -----------------------------
+# 2. Visualizzazione dei risultati
+summary(modello_re_final)
 
-model_re <- plm(
-  cancellazioni ~
-    ed_attain_low_sec +
-    gdp_growth +
-    gini_index +
-    labor_adv_edu +
-    edu_exp_public,
-  
-  data = pdata,
-  model = "random"
-)
+# 3. Controllo finale della qualità del modello
+# Un aumento dell'Adjusted R-squared indicherebbe che la rimozione 
+# delle variabili ha effettivamente migliorato il modello.
 
-summary(model_re)
-
-# -----------------------------
-# TEST HAUSMAN
-# -----------------------------
-
-phtest(model_fe, model_re)
 ```

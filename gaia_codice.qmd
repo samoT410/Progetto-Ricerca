@@ -43,33 +43,39 @@ head(df_long, 20)
 write_csv(df_long, "cancellazioni_mdr_long.csv")
 ```
 
-
-
 ```{r}
-#UNIAMO I DUE DATASET: regressori_list.csv + cancellazioni_mdr_long.csv
 library(dplyr)
 library(tidyr)
+library(readr)
 
-# ── 1. Caricamento ───────────────────────────────────────────────────────────
+# ── 1. Caricamento ───────────────────────────────────────────────
 regressori    <- read.csv("regressori_list.csv", stringsAsFactors = FALSE)
 cancellazioni <- read.csv("cancellazioni_mdr_long.csv", stringsAsFactors = FALSE)
+gdp_pc        <- read.csv("GDP_per_capita.csv", stringsAsFactors = FALSE)
 
-# ── 2. Pulizia: rimozione righe di metadati (senza Country Code valido) ──────
+# ── 2. Pulizia regressori: rimuovi vecchio GDP growth ───────────
 regressori_clean <- regressori |>
   filter(!is.na(Country.Code) & Country.Code != "" &
-           !is.na(Time)         & !is.na(Value))
+           !is.na(Time) & !is.na(Value)) |>
+  filter(Series.Code != "NY.GDP.MKTP.KD.ZG")   # elimina GDP growth
 
-# ── 3. Pivot da long a wide: ogni Serie diventa una colonna ─────────────────
-#    Usiamo Series.Code come nome colonna (più compatto di Series.Name)
-regressori_wide <- regressori_clean |>
+# ── 3. Aggiungi GDP per capita al dataset regressori ────────────
+gdp_pc_clean <- gdp_pc |>
+  filter(!is.na(Country.Code) & Country.Code != "" &
+           !is.na(Time) & !is.na(Value))
+
+regressori_all <- bind_rows(regressori_clean, gdp_pc_clean)
+
+# ── 4. Pivot long → wide ────────────────────────────────────────
+regressori_wide <- regressori_all |>
   mutate(Time = as.integer(Time)) |>
   select(Country.Name, Country.Code, Time, Series.Code, Value) |>
   pivot_wider(
-    names_from  = Series.Code,
+    names_from = Series.Code,
     values_from = Value
   )
 
-# ── 4. Dizionario nomi paese (IT → EN) ───────────────────────────────────────
+# ── 5. Dizionario paesi ─────────────────────────────────────────
 paese_map <- c(
   "Regno Unito"            = "United Kingdom",
   "Germania"               = "Germany",
@@ -88,35 +94,24 @@ paese_map <- c(
 cancellazioni <- cancellazioni |>
   mutate(Country.Name = paese_map[paese])
 
-# ── 5. Join ──────────────────────────────────────────────────────────────────
+# ── 6. Join finale ──────────────────────────────────────────────
 dataset_unito <- regressori_wide |>
   left_join(
     cancellazioni |> select(Country.Name, anno, cancellazioni),
-    by = c("Country.Name" = "Country.Name", "Time" = "anno")
+    by = c("Country.Name", "Time" = "anno")
   )
 
-# ── 6. Verifica ──────────────────────────────────────────────────────────────
-glimpse(dataset_unito)
-
-# Righe senza cancellazioni (dovrebbe essere 0)
-dataset_unito |>
-  filter(is.na(cancellazioni)) |>
-  distinct(Country.Name, Time)
-
-# Carica la libreria
-library(dplyr)
-
-# Supponiamo che il tuo dataset si chiami 'df'
+# ── 7. Rename variabili ─────────────────────────────────────────
 dataset_unito <- dataset_unito %>%
   rename(
     ed_attain_low_sec = SE.SEC.CUAT.LO.ZS,
-    gdp_growth        = NY.GDP.MKTP.KD.ZG,
+    gdp_per_capita    = NY.GDP.PCAP.PP.CD,
     gini_index        = SI.POV.GINI,
     labor_adv_edu     = SL.TLF.ADVN.ZS,
     edu_exp_public    = SE.XPD.CTOT.ZS
   )
 
-# Creiamo un file in formato csv
+# ── 8. Export ───────────────────────────────────────────────────
 write_csv(dataset_unito, "dataset_unito.csv")
 ```
 
@@ -142,69 +137,59 @@ df <- df %>%
 
 # Gestione valori mancanti (esempio: rimozione o interpolazione)
 # Il modello plm non accetta NA nelle variabili del modello
-df_clean <- df %>% drop_na(cancellazioni, gdp_growth, gini_index)
+df_clean <- df %>% drop_na(cancellazioni, gdp_per_capita, gini_index)
 
 # 3. Definizione della struttura Panel
 # 'index' specifica la dimensione individuale (Country) e temporale (Time)
 p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
 
-# 4. MODELLO A EFFETTI FISSI (Within)
-# Studia come le variazioni delle variabili indipendenti entro lo stesso paese 
-# influenzano le cancellazioni nel tempo.
-modello_fe <- plm(cancellazioni ~ gdp_growth + gini_index + ed_attain_low_sec + brexit + covid, 
-                 data = p_df, 
-                 model = "within")
-
-# 5. Output dei risultati
-summary(modello_fe)
-
-
-# MODELLO A EFFETTI RANDOM
-modello_re <- plm(cancellazioni ~ gdp_growth + gini_index + ed_attain_low_sec + brexit + covid, 
+# 4. MODELLO A EFFETTI RANDOM
+modello_re <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + brexit + covid, 
                  data = p_df, 
                  model = "random")
 summary(modello_re)
 
+# MODELLO A EFFETTI FISSI (Within)
+modello_fe <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + brexit + covid, 
+                 data = p_df, 
+                 model = "within")
+summary(modello_fe)
+
 # 6. Test di Hausman
 # Confronta il modello a Effetti Fissi con quello a Effetti Random
-phtest(modello_fe, modello_re)
+phtest(modello_fe, modello_re) # Preferiamo il modello a Effetti Fissi 
 
 # PROVIAMO AD AGGIUNGERE ALTRE VARIABILI DUMMY
 
 # 1. Aggiungi le nuove variabili dummy al dataframe originale (df)
 df <- df %>%
   mutate(
-    
-    confine = if_else(Country.Code %in% c("AUT", "FRA", "CHE"), 1, 0), # Paesi confinanti
-    
-    anglo = if_else(Country.Code %in% c("USA", "GBR", "IRL", "AUS"), 1, 0), # Paesi anglosassoni
-    
     ireland_shock = if_else(Country.Code == "IRL" & Time == 2015, 1, 0),   # Dummy per lo shock economico irlandese del 2015
   )
 
 # 2. IMPORTANTE: Ricrea l'oggetto panel (p_df) partendo dal dataframe aggiornato
 # Rimuoviamo eventuali NA nelle variabili che useremo nel modello
-df_clean <- df %>% drop_na(cancellazioni, gdp_growth, gini_index, ed_attain_low_sec)
+df_clean <- df %>% drop_na(cancellazioni, gdp_per_capita, gini_index, ed_attain_low_sec)
 
 p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
 
 # 3. Esegui il modello ad Effetti Random
-modello_re_extended <- plm(cancellazioni ~ gdp_growth + gini_index + ed_attain_low_sec + 
-                           brexit + covid + confine + anglo + ireland_shock, 
+modello_fe_extended <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + 
+                           brexit + covid + ireland_shock, 
                            data = p_df, 
-                           model = "random")
+                           model = "within")
 
 # 4. Visualizza i risultati
-summary(modello_re_extended)
+summary(modello_fe_extended)
 
-# 1. Stima del modello ottimizzato (senza 'confine' e 'ireland_shock')
-modello_re_final <- plm(cancellazioni ~ gdp_growth + gini_index + ed_attain_low_sec + 
-                        brexit + covid + anglo, 
+# 1. Stima del modello ottimizzato
+modello_fe_final <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + 
+                        brexit, 
                         data = p_df, 
-                        model = "random")
+                        model = "within")
 
 # 2. Visualizzazione dei risultati
-summary(modello_re_final)
+summary(modello_fe_final)
 
 # 3. Controllo finale della qualità del modello
 # Un aumento dell'Adjusted R-squared indicherebbe che la rimozione 

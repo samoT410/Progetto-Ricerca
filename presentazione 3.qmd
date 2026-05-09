@@ -24,37 +24,32 @@ format:
       \usepackage{caption}
 ---
 
-
-
+\newpage
 
 # Introduzione e definizione dell'argomento
-\begin{center}
 
 La fuga di cervelli è il fenomeno per cui persone altamente istruite, qualificate o con elevate competenze professionali lasciano il proprio paese (o regione) per trasferirsi altrove, generalmente alla ricerca di migliori opportunità lavorative, salariali, scientifiche o di qualità della vita.
 
-In termini economici e sociali, la fuga di cervelli comporta una perdita di capitale umano per il territorio di origine, poiché individui formati attraverso investimenti pubblici e privati contribuiscono poi alla crescita economica e innovativa di altri paesi.
+In termini economici e sociali, la fuga di cervelli comporta una perdita di capitale umano per il territorio di origine, poiché individui formati attraverso investimenti pubblici e privati contribuiscono poi alla crescita economica e innovativa di altri paesi. Una definizione più formale fornita della commissione europea è:
 
-Una definizione più formale fornita della commissione europea è:
-
+\begin{center}
 \begin{quote}
 "Brain drain refers to the permanent emigration or outflow of skilled and talented individuals from their home regions to seek better opportunities and prospects elsewhere. (European Commission, 2023)"
 \end{quote}
-
 \end{center}
 
-In questa analisi ci concentreremo sulla fuga dall'Italia ai principali Paesi di destinazione scelti dagli italiani.
+Il contesto italiano offre uno spaccato particolarmente interessante per analizzare questo fenomeno. Il mercato del lavoro italiano è storicamente caratterizzato da tassi di occupazione al di sotto della media europea, da una marcata dualità tra lavoro stabile e precario, e da una spesa pubblica in ricerca e istruzione che resta tra le più basse dell'Unione. A ciò si aggiunge una struttura salariale poco competitiva rispetto ai principali paesi di destinazione, soprattutto per i profili ad alta qualifica.
+
+In questa analisi ci concentreremo sui flussi di emigrazione degli italiani con alto livello di istruzione nel periodo 2013–2024, con l'obiettivo di descriverne l'evoluzione e di identificare, attraverso un modello econometrico a dati panel, i principali fattori che li determinano.
 
 
-# Analisi descrittiva dei Dati Italiani
+# Analisi descrittiva della situazione italiana
 
-Di seguito carichiamo i grafici su occupazione e flussi migratori di italiani con alto livello di istruzione
+Prima di procedere con l'analisi, è utile osservare l'evoluzione del fenomeno attraverso i dati disponibili per l'Italia. Nei paragrafi che seguono vengono presentati il tasso di occupazione nel periodo 2013–2024 e i flussi di emigrazione degli italiani con alto livello di istruzione, sia in termini aggregati che per paese di destinazione.
 
-
-
-## Tassi di occupazione negli anni 
+## Tasso di occupazione
 
 ```{r}
-
 # Installa i pacchetti se non presenti
 if (!requireNamespace("readr",  quietly = TRUE)) install.packages("readr")
 if (!requireNamespace("dplyr",  quietly = TRUE)) install.packages("dplyr")
@@ -96,7 +91,6 @@ tabella <- italia_long |>
   gt() |>
   tab_header(
     title    = md("**Tasso di Occupazione — Italia**"),
-    subtitle = "Employment to population ratio, 15+, totale (%) · 2013–2024"
   ) |>
   cols_label(
     Anno        = "Anno",
@@ -116,7 +110,7 @@ tabella <- italia_long |>
     locations = cells_column_labels()
   ) |>
   tab_source_note(
-    source_note = "Fonte: World Bank.csv"
+    source_note = "Fonte: World Bank - Employment to population ratio, 15+, totale (%) · 2013–2024"
   ) |>
   opt_table_font(font = "Arial") |>
   opt_row_striping()
@@ -125,11 +119,21 @@ tabella <- italia_long |>
 tabella
 ```
 
+Il tasso di occupazione italiano (popolazione 15+) mostra una crescita sostanzialmente continua nel periodo considerato, passando  dal 42,60% del 2013 al 46,37% del 2024. La progressione non è però lineare: dopo una fase di lenta risalita tra il 2013 e il 2019, si registra una flessione nel 2020 e 2021, riconducibile agli effetti della pandemia sul mercato del lavoro. Dal 2022 in poi la ripresa è più decisa, con il tasso che supera per la prima volta quota 46%.
+
+Va tuttavia sottolineato che, nonostante il miglioramento, i valori rimangono strutturalmente bassi rispetto alla media europea, il che contribuisce a rendere il mercato del lavoro italiano poco attrattivo per i profili ad alta qualifica.
+
 ## Flussi negli anni
+
 ```{r}
 #| label: grafico-iscritti-totale
 #| fig-width: 8
 #| fig-height: 5
+
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("readxl", quietly = TRUE)) install.packages("readxl")
+if (!requireNamespace("ggplot2", quietly = TRUE)) install.packages("ggplot2")
+if (!requireNamespace("scales", quietly = TRUE)) install.packages("scales")
 
 library(tidyverse)
 library(readxl)
@@ -164,11 +168,10 @@ p_iscritti <- ggplot(dati, aes(x = factor(anno), y = n)) +
     expand   = expansion(mult = c(0, 0))
   ) +
   labs(
-    title    = "Italiani con alta istruzione iscritti all'estero – Totale",
-    subtitle = "Tavola 12 ISTAT · Riga Totale CANCELLAZIONI · Colonna istruzione alta · Anni 2013–2024",
-    caption  = "Fonte: ISTAT – Demo.istat.it, Tavola 12 (2024 provvisorio)",
+    title    = "Italiani con alta istruzione residenti all'estero – Totale",
+    caption  = "Fonte: ISTAT – Demo.istat.it, Tavola 12",
     x        = NULL,
-    y        = "Numero di persone (istruzione alta)"
+    y        = "Italiani residenti all'estero con alta istruzione"
   ) +
   theme_minimal(base_size = 13) +
   theme(
@@ -185,7 +188,13 @@ p_iscritti <- ggplot(dati, aes(x = factor(anno), y = n)) +
 p_iscritti
 ```
 
-## Flussi per destivazione e anni 
+Il grafico mostra con chiarezza la tendenza crescente nell'emigrazione di italiani con alto livello di istruzione: 
+si passa dai circa 19.500 del 2013 ai quasi 44.700 del 2024, con un incremento complessivo di oltre il 130% nell'arco del periodo.
+
+L'unica interruzione significativa si registra nel biennio 2020–2021, in corrispondenza della pandemia da COVID-19,che ha temporaneamente bloccato i flussi migratori a livello globale. La ripresa successiva è però rapida e intensa: già dal 2022 i valori tornano sui livelli pre-pandemia, e negli anni 2023–2024 si registrano i picchi più alti dell'intera serie storica.
+
+## Flussi per destinazione e anni 
+
 ```{r}
 #| label: grafico-iscritti-paesi
 #| fig-width: 10
@@ -284,8 +293,25 @@ p_paesi <- ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = pae
 p_paesi
 ```
 
+Il grafico mostra la distribuzione dei flussi di emigrazione degli italiani con alto livello di istruzione verso i principali paesi di destinazione nel periodo 2013–2024, permettendo di cogliere sia le tendenze di lungo periodo che l'impatto di eventi specifici sulla mobilità qualificata.
 
-## Identidicazione dei fattori causali della fuga di cervelli
+Il Regno Unito si conferma, per quasi tutto il periodo analizzato, la destinazione privilegiata degli italiani altamente istruiti. I flussi verso il paese crescono in modo sostenuto fino al 2019, anno in cui si raggiunge il picco massimo con circa 7.200 emigrati. È interessante notare che il referendum sulla Brexit del 2016 non 
+ha prodotto nell'immediato un effetto di rallentamento: al contrario, i flussi continuano a crescere nel biennio successivo, probabilmente per effetto di una corsa alla residenza prima che le nuove normative 
+entrassero in vigore. Il calo diventa evidente solo a partire dal 2020–2021, quando l'uscita effettiva del Regno Unito dall'Unione Europea ha reso concretamente più difficile il trasferimento, eliminando la libertà di circolazione per i cittadini europei. Dal 2022 in poi il flusso verso il Regno Unito si stabilizza su valori significativamente più bassi rispetto al picco pre-Brexit.
+
+Germania e Francia rappresentano le altre due destinazioni storicamente più rilevanti, con andamenti relativamente stabili nel tempo. La Germania mantiene flussi costanti attorno alle 3.000–4.000 unità annue, confermandosi come meta attrattiva soprattutto per profili tecnico-scientifici. La Francia mostra invece una crescita più marcata nella seconda parte del periodo, superando i 3.500 emigrati nel 2024.
+
+Un dato particolarmente significativo riguarda la Spagna, che negli ultimi anni registra una crescita sostenuta e quasi ininterrotta, arrivando a superare nel 2024 il Regno Unito come seconda destinazione per flusso annuale. Questo dato è in parte controintuitivo, considerando che la Spagna condivide con l'Italia alcune delle criticità strutturali — disoccupazione elevata, salari bassi per i giovani qualificati — che spingono all'emigrazione. 
+Una possibile spiegazione risiede nella crescita del settore tecnologico spagnolo, in particolare a Barcellona e Madrid, e nella qualità della vita percepita come più accessibile rispetto alle grandi città nordeuropee.
+
+Il biennio 2020–2021 rappresenta un'anomalia trasversale a tutte le destinazioni: i flussi calano in modo generalizzato per effetto delle restrizioni alla mobilità imposte dalla pandemia da COVID-19. 
+La ripresa dal 2022 in poi è però rapida e, per alcune destinazioni come Spagna e Francia, porta a valori superiori a quelli pre-pandemia.
+
+Nel complesso, il grafico evidenzia una progressiva diversificazione delle destinazioni nel tempo. Se fino al 2019 
+il flusso era fortemente concentrato verso il Regno Unito, negli anni più recenti si osserva una distribuzione più 
+equilibrata tra più paesi europei, con una tendenza a privilegiare mete dell'Europa continentale rispetto a quella anglosassone. Questo cambiamento riflette probabilmente sia l'effetto strutturale della Brexit che una maggiore apertura dei mercati del lavoro dell'Europa continentale ai profili altamente qualificati.
+
+## Identificazione dei regressori per lo studio della fuga di cervelli
 
 I regressori della variabile dipendente (fuga di cervelli) sono stati
 identificati in:
@@ -608,6 +634,71 @@ y_{it} = \alpha + \beta X_{it} + \mu_i + \lambda_t + \varepsilon_{it}
 
 # Applicazione del modello ai dati 
 
+
+```{r, include = FALSE}
+# 1. Caricamento pacchetti necessari
+if (!require("plm")) install.packages("plm")
+if (!require("tidyverse")) install.packages("tidyverse")
+
+library(plm)
+library(tidyverse)
+
+# 2. Caricamento e pulizia dati
+df <- read.csv("dataset_unito.csv")
+
+# Creazione variabili dummy per eventi storici
+df <- df %>%
+  mutate(
+    # Dummy Brexit: 1 per GBR dal 2016 (voto) o 2020 (uscita effettiva)
+    brexit = if_else(Country.Code == "GBR" & Time >= 2016, 1, 0),
+    # Dummy COVID-19: impatto globale sulla mobilità 2020-2021
+    covid = if_else(Time %in% c(2020, 2021), 1, 0)
+  )
+
+# Gestione valori mancanti (esempio: rimozione o interpolazione)
+# Il modello plm non accetta NA nelle variabili del modello
+df_clean <- df %>% drop_na(cancellazioni, gdp_per_capita, gini_index)
+
+# 3. Definizione della struttura Panel
+# 'index' specifica la dimensione individuale (Country) e temporale (Time)
+p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
+
+```
+
+```{r}
+# MODELLO A EFFETTI RANDOM
+modello_re <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + labor_adv_edu + edu_exp_public + brexit + covid, 
+                 data = p_df, 
+                 model = "random")
+summary(modello_re)
+
+# MODELLO A EFFETTI FISSI (Within)
+modello_fe <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + labor_adv_edu + edu_exp_public + brexit + covid, 
+                 data = p_df, 
+                 model = "within")
+summary(modello_fe)
+
+# Test di Hausman: confrontro tra  modello a Effetti Fissi e quello a Effetti Random
+phtest(modello_fe, modello_re) # Preferiamo il modello a Effetti Fissi 
+```
+
+```{r, include = FALSE}
+# Rimuoviamo eventuali NA nelle variabili che useremo nel modello
+df_clean <- df %>% drop_na(cancellazioni, gdp_per_capita, gini_index, ed_attain_low_sec)
+
+p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
+```
+
+```{r}
+# Stima del modello ottimizzato
+modello_fe_final <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec +
+                        brexit, 
+                        data = p_df, 
+                        model = "within")
+
+# 2. Visualizzazione dei risultati
+summary(modello_fe_final)
+```
 
 # Commento del risultato 
 

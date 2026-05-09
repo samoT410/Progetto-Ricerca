@@ -1,7 +1,7 @@
 ---
-title: "Analisi Econometrica della Fuga di Cervelli"
-subtitle: "Determinanti e Impatti sui Sistemi d'Innovazione"
-author: ""
+title: "Determinanti della Fuga di Cervelli Italiana: un'analisi a Dati Panel"
+subtitle: "Gruppo G"
+author: "Shakira Nassih, Giulia Parentela, Stefano Soddu, Tomas Trebbi, Gaia Zanirato"
 date: last-modified
 lang: it
 execute:
@@ -22,11 +22,12 @@ format:
     header-includes: |
       \usepackage{booktabs}
       \usepackage{caption}
+      \usepackage{float}
 ---
 
 \newpage
 
-# Introduzione e definizione dell'argomento
+# Introduzione e definizione del fenomeno
 
 La fuga di cervelli è il fenomeno per cui persone altamente istruite, qualificate o con elevate competenze professionali lasciano il proprio paese (o regione) per trasferirsi altrove, generalmente alla ricerca di migliori opportunità lavorative, salariali, scientifiche o di qualità della vita.
 
@@ -43,7 +44,7 @@ Il contesto italiano offre uno spaccato particolarmente interessante per analizz
 In questa analisi ci concentreremo sui flussi di emigrazione degli italiani con alto livello di istruzione nel periodo 2013–2024, con l'obiettivo di descriverne l'evoluzione e di identificare, attraverso un modello econometrico a dati panel, i principali fattori che li determinano.
 
 
-# Analisi descrittiva della situazione italiana
+# Il caso italiano: analisi descrittiva dei flussi migratori
 
 Prima di procedere con l'analisi, è utile osservare l'evoluzione del fenomeno attraverso i dati disponibili per l'Italia. Nei paragrafi che seguono vengono presentati il tasso di occupazione nel periodo 2013–2024 e i flussi di emigrazione degli italiani con alto livello di istruzione, sia in termini aggregati che per paese di destinazione.
 
@@ -123,7 +124,7 @@ Il tasso di occupazione italiano (popolazione 15+) mostra una crescita sostanzia
 
 Va tuttavia sottolineato che, nonostante il miglioramento, i valori rimangono strutturalmente bassi rispetto alla media europea, il che contribuisce a rendere il mercato del lavoro italiano poco attrattivo per i profili ad alta qualifica.
 
-## Flussi negli anni
+## Flussi di emigrazione qualificata nel tempo
 
 ```{r}
 #| label: grafico-iscritti-totale
@@ -193,7 +194,7 @@ si passa dai circa 19.500 del 2013 ai quasi 44.700 del 2024, con un incremento c
 
 L'unica interruzione significativa si registra nel biennio 2020–2021, in corrispondenza della pandemia da COVID-19,che ha temporaneamente bloccato i flussi migratori a livello globale. La ripresa successiva è però rapida e intensa: già dal 2022 i valori tornano sui livelli pre-pandemia, e negli anni 2023–2024 si registrano i picchi più alti dell'intera serie storica.
 
-## Flussi per destinazione e anni 
+## Destinazioni preferite dagli emigrati italiani
 
 ```{r}
 #| label: grafico-iscritti-paesi
@@ -311,7 +312,7 @@ Nel complesso, il grafico evidenzia una progressiva diversificazione delle desti
 il flusso era fortemente concentrato verso il Regno Unito, negli anni più recenti si osserva una distribuzione più 
 equilibrata tra più paesi europei, con una tendenza a privilegiare mete dell'Europa continentale rispetto a quella anglosassone. Questo cambiamento riflette probabilmente sia l'effetto strutturale della Brexit che una maggiore apertura dei mercati del lavoro dell'Europa continentale ai profili altamente qualificati.
 
-# Identificazione dei regressori per lo studio della fuga di cervelli
+# I determinanti della fuga di cervelli: selezione dei regressori
 
 I grafici che seguono mostrano l'andamento nel periodo 2013–2024 delle variabili utilizzate come regressori nel modello econometrico, per ciascuno degli undici paesi di destinazione considerati nell'analisi. L'obiettivo è verificare visivamente la presenza di trend e differenze strutturali tra i paesi, prima di procedere 
 con la stima formale.
@@ -600,7 +601,7 @@ Attraverso il test $H_{0}: \beta_{1i} = 0$, si cerca la presenza di un trend nel
 
 
 ```{r}
-# Caricamento librerie necessarie
+
 if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
 if (!requireNamespace("broom", quietly = TRUE)) install.packages("broom")
 
@@ -699,6 +700,8 @@ Per validare la robustezza del set di dati, è stata analizzata la significativi
 ```
 # Tabella delle medie 
 ```{r}
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("broom", quietly = TRUE)) install.packages("broom")
 library(tidyverse)
 library(broom)
 
@@ -763,7 +766,7 @@ tabella_finale
 
 ```
 
-# Modello di regressione 
+# Specificazione del modello 
 
 ```{=tex}
 \begin{flushleft}
@@ -820,7 +823,7 @@ e conviene affidarsi a quello a effetti fissi.
 \end{flushleft}
 ```
 
-# Applicazione del modello ai dati 
+# Stima e risultati del modello
 
 ```{r, include = FALSE}
 # 1. Caricamento pacchetti necessari
@@ -853,7 +856,6 @@ p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
 ```
 
 ```{r, echo = TRUE}
-
 # MODELLO A EFFETTI RANDOM
 modello_re <- plm(cancellazioni ~ gdp_per_capita + gini_index + 
                   ed_attain_low_sec + labor_adv_edu + edu_exp_public + 
@@ -865,11 +867,111 @@ modello_fe <- plm(cancellazioni ~ gdp_per_capita + gini_index +
                   ed_attain_low_sec + labor_adv_edu + edu_exp_public + 
                   brexit + covid, 
                   data = p_df, model = "within")
+```
 
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+if (!requireNamespace("kableExtra", quietly = TRUE)) install.packages("kableExtra")
+if (!requireNamespace("broom", quietly = TRUE)) install.packages("broom")
+if (!requireNamespace("knitr", quietly = TRUE)) install.packages("knitr")
+
+library(knitr)
+library(kableExtra)
+library(broom)
+
+tidy(modello_re) %>%
+  mutate(
+    term = recode(term,
+      "gdp_per_capita"    = "PIL pro capite",
+      "gini_index"        = "Indice di Gini",
+      "ed_attain_low_sec" = "Livello di istruzione",
+      "labor_adv_edu"     = "Forza lavoro istruita",
+      "edu_exp_public"    = "Spesa pubblica per istruzione",
+      "brexit"            = "Brexit (dummy)",
+      "covid"             = "COVID-19 (dummy)",
+    ),
+    stars = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01  ~ "**",
+      p.value < 0.05  ~ "*",
+      p.value < 0.1   ~ ".",
+      TRUE            ~ ""
+    )
+  ) %>%
+  select(term, estimate, std.error, statistic, p.value, stars) %>%
+  kable(
+    format   = "latex",
+    booktabs = TRUE,
+    digits   = 4,
+    col.names = c("Variabile", "Coefficiente", "Std. Error", 
+                  "t-value", "p-value", ""),
+    caption  = paste0("Modello a Effetti Random — R² = ",
+                      round(summary(modello_re)$r.squared[1], 4))
+  ) %>%
+  kable_styling(latex_options = c("hold_position"))
+```
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+if (!requireNamespace("kableExtra", quietly = TRUE)) install.packages("kableExtra")
+if (!requireNamespace("broom", quietly = TRUE)) install.packages("broom")
+if (!requireNamespace("knitr", quietly = TRUE)) install.packages("knitr")
+
+library(knitr)
+library(kableExtra)
+library(broom)
+
+tidy(modello_fe) %>%
+  mutate(
+    term = recode(term,
+      "gdp_per_capita"    = "PIL pro capite",
+      "gini_index"        = "Indice di Gini",
+      "ed_attain_low_sec" = "Livello di istruzione",
+      "labor_adv_edu"     = "Forza lavoro istruita",
+      "edu_exp_public"    = "Spesa pubblica per istruzione",
+      "brexit"            = "Brexit (dummy)",
+      "covid"             = "COVID-19 (dummy)",
+    ),
+    stars = case_when(
+      p.value < 0.001 ~ "***",
+      p.value < 0.01  ~ "**",
+      p.value < 0.05  ~ "*",
+      p.value < 0.1   ~ ".",
+      TRUE            ~ ""
+    )
+  ) %>%
+  select(term, estimate, std.error, statistic, p.value, stars) %>%
+  kable(
+    format   = "latex",
+    booktabs = TRUE,
+    digits   = 4,
+    col.names = c("Variabile", "Coefficiente", "Std. Error", 
+                  "t-value", "p-value", ""),
+    caption  = paste0("Modello a Effetti Fissi — R² = ",
+                      round(summary(modello_fe)$r.squared[1], 4))
+  ) %>%
+  kable_styling(latex_options = c("hold_position"))
+```
+
+```{r}
 # Test di Hausman
 hausman <- phtest(modello_fe, modello_re)
 ```
 
+Il modello a effetti random include tutti i regressori identificati in fase di analisi descrittiva. Tra le variabili considerate, il PIL pro capite e l'indice di Gini mostrano una significatività 
+marginale (p-value rispettivamente 0.087 e 0.070), mentre la dummy Brexit risulta l'unica variabile fortemente significativa (p-value < 0.001). Le variabili relative alla forza lavoro istruita, alla spesa pubblica per l'istruzione e alla dummy COVID-19 non risultano statisticamente significative, suggerendo che il loro contributo esplicativo sia limitato una volta controllato per gli altri fattori. L'R² pari a 0.36 indica che il modello spiega circa un terzo della variabilità osservata nei flussi migratori.
+
+Il modello a effetti fissi produce risultati qualitativamente simili a quelli del modello a effetti random, con alcune differenze nei coefficienti stimati dovute alla diversa metodologia di stima. Il PIL pro capite risulta ora significativo al 5% (p-value 0.038), mentre l'indice di Gini 
+mantiene una significatività marginale. La dummy Brexit si conferma il regressore più robusto, con un coefficiente di circa 2.252 e p-value pressoché nullo. L'R² è pari a 0.34, in linea con il modello a effetti random.
+
+Il test di Hausman restituisce un p-value pari a 0.90, ben al di sopra di qualsiasi soglia convenzionale di significatività. Questo significa che non si rifiuta l'ipotesi nulla di incorrelazione tra gli effetti 
+individuali e i regressori: i due modelli producono stime sostanzialmente equivalenti, e il modello a 
+effetti random sarebbe teoricamente preferibile per la sua maggiore efficienza.
+
+Tuttavia, per ragioni di robustezza si sceglie comunque di procedere con il modello a effetti fissi nella 
+specificazione finale. Questa scelta è giustificata dal fatto che i paesi di destinazione non sono un 
+campione casuale estratto da una popolazione più ampia, ma un insieme selezionato di destinazioni rilevanti per l'emigrazione italiana: in questo contesto, trattare gli effetti individuali come fissi è 
+concettualmente più appropriato.
 
 ```{r, include = FALSE}
 # Rimuoviamo eventuali NA nelle variabili che useremo nel modello
@@ -878,28 +980,27 @@ df_clean <- df %>% drop_na(cancellazioni, gdp_per_capita, gini_index, ed_attain_
 p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
 ```
 
-```{r, include = FALSE}
+\newpage
+
+```{r, echo = TRUE}
 # Stima del modello ottimizzato
 modello_fe_final <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec +
                         brexit, 
                         data = p_df, 
                         model = "within")
-
 ```
 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
-#| echo: false
-#| warning: false
-#| message: false
 
-if (!requireNamespace("gt", quietly = TRUE))
-if (!requireNamespace("broom", quietly = TRUE))
+if (!requireNamespace("kableExtra", quietly = TRUE)) install.packages("kableExtra")
+if (!requireNamespace("broom", quietly = TRUE)) install.packages("broom")
+if (!requireNamespace("knitr", quietly = TRUE)) install.packages("knitr")
 
+library(knitr)
+library(kableExtra)
 library(broom)
-library(gt)
 
-# Tabella coefficienti
-tidy(modello_fe_final, conf.int = FALSE) %>%
+tidy(modello_fe_final) %>%
   mutate(
     term = recode(term,
       "gdp_per_capita"    = "PIL pro capite",
@@ -916,26 +1017,41 @@ tidy(modello_fe_final, conf.int = FALSE) %>%
     )
   ) %>%
   select(term, estimate, std.error, statistic, p.value, stars) %>%
-  gt() %>%
-  tab_header(title = "Modello a Effetti Fissi — Risultati") %>%
-  cols_label(
-    term      = "Variabile",
-    estimate  = "Coefficiente",
-    std.error = "Std. Error",
-    statistic = "t-value",
-    p.value   = "p-value",
-    stars     = ""
+  kable(
+    format   = "latex",
+    booktabs = TRUE,
+    digits   = 4,
+    col.names = c("Variabile", "Coefficiente", "Std. Error", 
+                  "t-value", "p-value", ""),
+    caption  = paste0("Modello a Effetti Fissi — R² = ",
+                      round(summary(modello_fe_final)$r.squared[1], 4))
   ) %>%
-  fmt_number(columns = c(estimate, std.error, statistic), decimals = 4) %>%
-  fmt_number(columns = p.value, decimals = 4) %>%
-  tab_source_note(
-    source_note = paste0("R² = ", round(summary(modello_fe_final)$r.squared[1], 4),
-                         " | R² corretto = ", round(summary(modello_fe_final)$r.squared[2], 4),
-                         " | F-stat p-value: 6.529e-08")
-  ) %>%
-  opt_table_font(font = "Arial")
+  kable_styling(latex_options = c("hold_position"))
 ```
 
-# Commento del risultato 
+La specificazione finale mantiene solo i regressori risultati significativi nelle stime precedenti: 
+PIL pro capite, indice di Gini, livello di istruzione e dummy Brexit. La riduzione del numero di variabili migliora la parsimonia del modello senza sacrificarne il potere esplicativo, come confermato dall'R² pari 
+a 0.33, solo marginalmente inferiore a quello del modello completo.
+
+Il PIL pro capite risulta significativo all'1% con un coefficiente positivo pari a 0.017: a parità 
+di altre condizioni, un paese più ricco attrae un maggior numero di emigrati italiani altamente 
+istruiti. L'indice di Gini mostra una significatività marginale (p-value 0.073) con coefficiente positivo, suggerendo che una maggiore disuguaglianza nel paese di destinazione non scoraggia la migrazione qualificata, probabilmente perché i profili ad alta istruzione si collocano nella parte alta della distribuzione salariale. Il livello di istruzione ha anch'esso un effetto positivo e marginalmente significativo (p-value 0.089), coerente con l'idea che paesi con un capitale umano più sviluppato offrano 
+ambienti lavorativi più attrattivi per i profili qualificati. Infine, la dummy Brexit conferma il proprio effetto dominante con un coefficiente di circa 2.401 e p-value pressoché nullo, a indicare che l'uscita del Regno Unito dall'Unione Europea ha prodotto un impatto strutturale e significativo sui flussi migratori verso quel paese.
+
+# Conclusioni
+
+Questa analisi si è proposta di identificare e stimare i principali determinanti dell'emigrazione qualificata italiana nel periodo 2013–2024, attraverso un modello di regressione lineare a dati panel con effetti fissi.
+
+I risultati dell'analisi descrittiva mostrano con chiarezza che il fenomeno è in crescita strutturale: il numero di italiani con alto livello di istruzione che si trasferiscono all'estero è più che raddoppiato nel periodo considerato, passando da circa 19.500 unità nel 2013 a quasi 45.000 nel 2024. Nonostante il tasso di occupazione italiano sia migliorato nel corso degli anni, il mercato del lavoro nazionale non sembra essere riuscito a trattenere i profili nazionale non sembra essere riuscito a trattenere i profili più qualificati, che continuano a preferire destinazioni con maggiori opportunità retributive e professionali.
+
+Il modello a effetti fissi nella sua specificazione finale individua tre determinanti statisticamente significativi. Il PIL pro capite del paese di destinazione esercita un effetto positivo 
+e significativo sui flussi migratori: a parità di altre condizioni, i paesi economicamente più sviluppati 
+attraggono un numero maggiore di emigrati italiani altamente istruiti. L'indice di Gini e il livello 
+di istruzione mostrano anch'essi un effetto positivo, sebbene con una significatività marginale, suggerendo che i lavoratori qualificati tendano a dirigersi verso paesi con mercati del lavoro dinamici e competitivi, indipendentemente dal grado di disuguaglianza interna.
+
+Il risultato più netto riguarda tuttavia la dummy Brexit: il coefficiente stimato è il più elevato in valore assoluto e fortemente significativo, confermando che l'uscita del Regno Unito dall'Unione Europea ha rappresentato uno shock strutturale di primaria importanza per i flussi migratori qualificati, ridisegnando in modo permanente la geografia delle destinazioni preferite dagli italiani.
+
+Alcune limitazioni dell'analisi meritano di essere segnalate. La disponibilità di dati completi per tutti 
+i regressori ha ridotto il campione effettivo, limitando la potenza statistica delle stime. Inoltre, il modello non cattura fattori di attrazione non economici — come la qualità della vita, le reti sociali o le politiche la qualità della vita, le reti sociali o le politiche di accoglienza — che potrebbero avere un peso rilevante nelle decisioni migratorie. Sviluppi futuri potrebbero includere variabili proxy per questi aspetti e ampliare il panel a un numero maggiore di paesi di destinazione. 
 
 

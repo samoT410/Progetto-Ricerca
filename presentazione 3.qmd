@@ -291,7 +291,7 @@ I regressori della variabile dipendente (fuga di cervelli) sono stati
 identificati in:
 
 \begin{itemize}
-  \item Disuguaglianza all'iterno del Paese (indice di Gini)
+  \item Disuguaglianza all'interno del Paese (indice di Gini)
   \item Livello di istruzione nel Paese
   \item Crescita percentuale del PIL del Paese
   \item Forza lavoro del Paese con istruzione avanzata 

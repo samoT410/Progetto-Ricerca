@@ -583,8 +583,9 @@ del campione.
 
 
 ```{=tex}
+Come ulteriore analisi statistica preliminare, risulta interessante studiare se nei diversi Paesi di destinazione dei migranti sono state attuate politiche che hanno portato a un cambiamento significativo dei valori dei regressori perchè a sua volta, come si vedrà dall'analisi finale, questi cambiamenti possono essere la causa della scelta riguardo la destinazione della fuga.
 
-Prima dell'analisi della fuga si vuole verificare se la variazione dei valori dei regressori sia significativa in ogni Paese. Per ogni paese e vraibile i modelli per la stima sono:
+Per identificare una significativa variazione del tempo dei valori dei regressori, si è costruito il seguente modello di regressione per serie storiche (specificando che i dati di ogni Paese sono considerati indipendenti dai dati degli altri).
 
 
 \[ 
@@ -592,10 +593,10 @@ X_{it} = \beta_{0i} + \beta_{1i} ANNO +\varepsilon_{i}
 \]
 
 \begin{quote}
-Con $\beta_{1i}$ come la variazione media annua della variabile X (regressore della fuga) nel Paese i 
+Con $\beta_{1i}$ come la variazione media annua della variabile $X$ (regressore della fuga) nel Paese i 
 \end{quote}
 
-Attraverso il test $H_{0}: \beta_{1i} = 0$, si cerca la presenza di un trend nel Paese i per ogni variabile X
+Attraverso il test $H_{0}: \beta_{1i} = 0$, si cerca la presenza di un trend nel Paese i per ogni variabile $X$
 ```
 ```{r}
 # Caricamento librerie necessarie
@@ -702,52 +703,63 @@ tab_gini <- risultati_finali %>%
 
 ```
 
-## Trend per variabile 'Spesa per l'istruzione'
 
 ```{r}
 
 formatta_tabella(tab_spesa, "Trend Spesa per l'Istruzione (2013-2024)")
 ```
 
-## Trend per variabile 'Crescita del PIL'
+In questo caso è interessante notare come i soli valori che risultano significativi siano anche negativi. Dunque, c'è evidenza di un trend di disinvestimento nella maggior parte delle economie avanzate analizzate. Gli Stati Uniti si fermano a un livello di significatività marginale ($p = 0.052$), suggerendo un trend debole o instabile.
 
 ```{r}
 formatta_tabella(tab_pil, "Trend Crescita del PIL")
 ```
 
-## Trend per variabile 'Livello di istruzione'
+Per quanto riguarda la crescita del Pil, per tutti i Paesi, non si nota un trend lineare nel periodo 2013-2024. Statisticamente, ciò indica che la crescita è stata o stazionaria (tendenzialmente costante) o troppo volatile (influenzata probabilmente da shock esterni come la pandemia) per mostrare una direzione univoca nel tempo.
+
 
 ```{r}
 formatta_tabella(tab_liv_istr, "Trend Livello di Istruzione (Titoli Terziari)")
 ```
 
-## Trend per variabile 'Forza lavoro con alto livello di istruzione'
+L'aumento del livello di istruzione terziaria, tra tutti, è il trend statistico più robusto. C'è una certezza quasi assoluta che il livello di istruzione terziaria sia aumentato globalmente in modo lineare. Quindi, nei Paesi indicati, il capitale umano "qualificato" è in crescita costante
+
 
 ```{r}
 formatta_tabella(tab_forza_lav, "Trend Forza Lavoro con Alto Livello di Istruzione")
 ```
 
-## Trend per variabile 'Disugualianza (Gini)'
+In contrasto con i risultati sulla significatività dell'aumento di persone qualificate, in molti Paesi risulta che il numero di occupati con tali qualifiche siano significativamente in calo. Ciò potrebbe indicare fenomeni di invecchiamento della forza lavoro qualificata o difficoltà del mercato nell'assorbire i nuovi laureati.
 
 ```{r}
 formatta_tabella(tab_gini, "Trend Indice di Gini (Disuguaglianza)")
 
 ```
 
+L'alta significatività di coefficenti sia positivi (aumento della disugualianza) che negativi (diminuzione disugualianze) in Paesi diversi, indica che il decennio 2013-2024 non ha avuto un effetto uniforme sulla distribuzione della ricchezza. Mentre i paesi dell'Europa periferica (Spagna, Irlanda) hanno visto una convergenza (riduzione Gini), le economie "core" (Germania, Svizzera) hanno subito un aumento della forbice sociale. Gli Stati Uniti, pur essendo spesso citati per le disuguaglianze, mostrano un coefficiente piatto ($p = 0.99$), indicando che la loro (alta) disuguaglianza è rimasta stabile nel periodo analizzato.
+
 # Inferenza sui regressori - test sulle medie per verifica di common trends
 ```{=tex}
 \begin{center}
 
-Per validare la robustezza del set di dati, è stata analizzata la significatività delle medie annuali per ogni regressore. Il rifiuto dell'ipotesi nulla $H_0: \mu_t = 0$ conferma che le variabili esplicative della fuga rappresentano una componente strutturale, in generale in tutti i Paesi, nel periodo considerato, ponendo le basi per la successiva analisi
+Per validare la robustezza del set di dati, in particolare accertandosi che in ogni anno i regressori identificati forniscano dati rilevanti per la regressione della fuga di cervelli, si attua ora un test di ipotesi in cui ci si aspetta di rifiutare l'ipotesi nulla $H_0: \mu_t = 0$, in cui $\mu_t$ è la media dei valori nei diversi Paesi della variabile $X$, al tempo $t$. 
+
+Alta significatività del test, infatti, assicura che non vi siano periodi di 'vuoto informativo' o distorsioni temporali che potrebbero distorcere le stime sulla fuga.
 
 \end{center}
 ```
 # Tabella delle medie 
 ```{r}
+#| label: tabella-statistica-divisa
+#| echo: false
+#| message: false
+#| warning: false
+
 library(tidyverse)
 library(broom)
+library(kableExtra)
 
-# 1. Funzione per gli asterischi
+# 1. Funzione per gli asterischi di significatività
 get_stars <- function(p) {
   if (is.na(p)) return("")
   if (p < 0.001) return("***")
@@ -757,84 +769,85 @@ get_stars <- function(p) {
   return("")
 }
 
-# 2. Caricamento e pulizia (assicurati che il file sia nella cartella corretta)
-df <- read_csv("regressori_list.csv")
+# 2. Caricamento e pulizia dati
+df <- read_csv("regressori_list.csv", show_col_types = FALSE)
 
 df_clean <- df %>%
   mutate(Value = as.numeric(Value)) %>%
   filter(!is.na(Value))
 
-# 3. Calcolo dei test e formattazione
+# 3. Calcolo dei test t e formattazione
 tabella_risultati <- df_clean %>%
   group_by(`Series Name`, Time) %>%
-  # Eseguiamo il test t (H0: media = 0)
   do(tidy(t.test(.$Value, mu = 0))) %>%
   ungroup() %>%
   mutate(
-    # Creiamo la stringa "p-value (***)"
     p_format = paste0(format.pval(p.value, digits = 3), " (", sapply(p.value, get_stars), ")"),
-    # Arrotondiamo la media per la colonna del valore
     estimate = round(estimate, 3)
   ) %>%
   select(`Series Name`, Time, estimate, p_format) %>%
-  # Trasformiamo in formato largo (wide)
   pivot_wider(
     names_from = Time, 
     values_from = c(estimate, p_format),
     names_glue = "{.value}_{Time}"
   )
 
-# 4. Riordino delle colonne per avere: Media_2013, P-value_2013, Media_2014, P-value_2014...
-# Prendiamo i nomi delle colonne tranne la prima (Series Name)
+# 4. Riordino delle colonne per anno
 cols <- colnames(tabella_risultati)[-1]
-# Le ordiniamo per anno (estraendo i numeri alla fine della stringa)
-anni <- str_extract(cols, "\\d+$") %>% unique() %>% sort()
+anni_vett <- str_extract(cols, "\\d+$") %>% unique() %>% sort()
 
 ordine_colonne <- c("Series Name")
-for(a in anni) {
+for(a in anni_vett) {
   ordine_colonne <- c(ordine_colonne, paste0("estimate_", a), paste0("p_format_", a))
 }
 
 tabella_finale <- tabella_risultati %>% select(all_of(ordine_colonne))
 
-# Rinominiamo le colonne per renderle pulite (opzionale)
-colnames(tabella_finale) <- gsub("estimate_", "Media ", colnames(tabella_finale))
-colnames(tabella_finale) <- gsub("p_format_", "p-value ", colnames(tabella_finale))
+# 5. Rinominia delle etichette delle righe (Assicurati che siano 5 come i tuoi dati)
+# Se il numero di righe è diverso, aggiungi o togli nomi qui sotto
+tabella_finale[1:5, 1] <- c('Spesa Istruzione', 'Livello Istruzione', 'Crescita PIL', 'Disugualianza', 'Lavoratori istruiti')
+colnames(tabella_finale)[1] <- "Variabile"
 
-tabella_finale[,1] <- c('Spesa Istruzione','Livello Istruzione','Crescita PIL','Disugualianza','Lavoratori istruiti') 
+# --- DIVISIONE IN DUE TABELLE PER IL PDF ---
 
-library(kableExtra)
+# Tabella 1: Variabile + Anni 2013-2018 (Colonne 1 a 13)
+tab_1 <- tabella_finale[, 1:13]
 
-# Definiamo i nomi delle colonne in modo pulito
-anni <- 2013:2024
-nomi_colonne <- c("Variabile", rep(c("Media", "p-value"), length(anni)))
+# Tabella 2: Variabile + Anni 2019-2024 (Colonna 1 + Colonne 14 a 25)
+tab_2 <- tabella_finale[, c(1, 14:25)]
 
-tabella_finale %>%
-  # Impostiamo i nomi delle colonne
-  setNames(nomi_colonne) %>%
-  kbl(
-    caption = "Analisi Statistica degli Indicatori (2013-2024)",
-    booktabs = TRUE,
-    align = "l"
-  ) %>%
+# 6. Renderizzazione Tabella Parte I
+tab_1 %>%
+  setNames(c("Variabile", rep(c("Media", "p-value"), 6))) %>%
+  kbl(caption = "Analisi Statistica degli Indicatori (2013-2018)", booktabs = TRUE, format = "latex") %>%
   kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
-    full_width = FALSE,
-    font_size = 10, # Leggermente più piccolo per far stare più dati
-    latex_options = c("striped", "hold_position", "scale_down")
+    latex_options = c("striped", "hold_position", "scale_down"), 
+    font_size = 8
   ) %>%
-  # FIX ERRORE: border_right impostato su TRUE (logico)
   column_spec(1, bold = TRUE, border_right = TRUE) %>%
-  # Raggruppamento anni nell'header
-  add_header_above(c(" " = 1, "2013" = 2, "2014" = 2, "2015" = 2, "2016" = 2, 
-                     "2017" = 2, "2018" = 2, "2019" = 2, "2020" = 2, 
-                     "2021" = 2, "2022" = 2, "2023" = 2, "2024" = 2)) %>%
-  # Estetica per i p-value (colonne pari dalla 3 in poi)
-  column_spec(seq(3, ncol(tabella_finale), by = 2), italic = TRUE, color = "#666666") %>%
-  # Scroll box solo per output HTML (rmarkdown lo ignora in PDF)
-  scroll_box(width = "100%", height = "400px")
+  add_header_above(c(" " = 1, "2013"=2, "2014"=2, "2015"=2, "2016"=2, "2017"=2, "2018"=2)) %>%
+  column_spec(seq(3, 13, by = 2), italic = TRUE, color = "gray")
+
+# 7. Renderizzazione Tabella Parte II
+tab_2 %>%
+  setNames(c("Variabile", rep(c("Media", "p-value"), 6))) %>%
+  kbl(caption = "Analisi Statistica degli Indicatori (2019-2024)", booktabs = TRUE, format = "latex") %>%
+  kable_styling(
+    latex_options = c("striped", "hold_position", "scale_down"), 
+    font_size = 8
+  ) %>%
+  column_spec(1, bold = TRUE, border_right = TRUE) %>%
+  add_header_above(c(" " = 1, "2019"=2, "2020"=2, "2021"=2, "2022"=2, "2023"=2, "2024"=2)) %>%
+  column_spec(seq(3, 13, by = 2), italic = TRUE, color = "gray")
 ```
 
+Le prove di inferenza sulle medie confermano la robustezza del dataset: poiché le variabili esplicative risultano quasi sempre significativamente diverse da zero, possiamo affermare che esse rappresentano fattori determinanti reali e non casuali. Avere così tanti valori di $p-value$ bassi, dimostra che variabili come 'Livello di Istruzione', 'Disuguaglianza' e 'Lavoratori Istruiti' non sono solo presenti, ma sono componenti strutturali stabili delle economie dei Paesi considerati. 
+
+Per quanto riguarda il caso della variabile 'Spesa per l'istruzione', mancano i dati aggiornati per gli anni più recenti a livello globale. Tuttavia, fino al 2022, la variabile rimane altamente significativa, suggerendo che il suo impatto rimane costante finché i dati sono disponibili.
+
+Infine per ciò che concerne il PIL, la sua crescita è l'unica variabile che mostra oscillazioni nella significatività. Ad esempio, nel 2015 il $p-value$ sale a $0.109$ (valore della media non significativamente diverso da zero), indicando una possibile fase di stasi per quell'anno. Nel 2020, la media è negativa ($-4.008$) con significatività ($*$). Questo riflette chiaramente l'impatto della pandemia di COVID-19, che ha spostato la media mondiale in territorio negativo in modo statisticamente rilevante. 
+
+In sostanza, risulta che 'Disugualianza' e 'Lavoratori istruiti' siano i regressori più robusti. Mentre il PIL fluttua e la spesa può variare per decisioni politiche, la bassa volatilità del livello di disuguaglianza e della quota di lavoratori istruiti rende le variabili dei riferimenti certi per un modello di regressione.
 
 # Specificazione del modello 
 

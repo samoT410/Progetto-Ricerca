@@ -275,3 +275,6 @@ y_{it} = \alpha + \beta X_{it} + \mu_i + \lambda_t + \varepsilon_{it}
 \end{itemize}
 ```
 
+
+
+

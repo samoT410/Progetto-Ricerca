@@ -144,13 +144,13 @@ df_clean <- df %>% drop_na(cancellazioni, gdp_per_capita, gini_index)
 p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
 
 # 4. MODELLO A EFFETTI RANDOM
-modello_re <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + brexit + covid, 
+modello_re <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + labor_adv_edu + edu_exp_public + brexit + covid, 
                  data = p_df, 
                  model = "random")
 summary(modello_re)
 
 # MODELLO A EFFETTI FISSI (Within)
-modello_fe <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + brexit + covid, 
+modello_fe <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + labor_adv_edu + edu_exp_public + brexit + covid, 
                  data = p_df, 
                  model = "within")
 summary(modello_fe)
@@ -167,32 +167,17 @@ df <- df %>%
     ireland_shock = if_else(Country.Code == "IRL" & Time == 2015, 1, 0),   # Dummy per lo shock economico irlandese del 2015
   )
 
-# 2. IMPORTANTE: Ricrea l'oggetto panel (p_df) partendo dal dataframe aggiornato
 # Rimuoviamo eventuali NA nelle variabili che useremo nel modello
 df_clean <- df %>% drop_na(cancellazioni, gdp_per_capita, gini_index, ed_attain_low_sec)
 
 p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
 
-# 3. Esegui il modello ad Effetti Random
-modello_fe_extended <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + 
-                           brexit + covid + ireland_shock, 
-                           data = p_df, 
-                           model = "within")
-
-# 4. Visualizza i risultati
-summary(modello_fe_extended)
-
 # 1. Stima del modello ottimizzato
-modello_fe_final <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + 
+modello_fe_final <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec +
                         brexit, 
                         data = p_df, 
                         model = "within")
 
 # 2. Visualizzazione dei risultati
 summary(modello_fe_final)
-
-# 3. Controllo finale della qualità del modello
-# Un aumento dell'Adjusted R-squared indicherebbe che la rimozione 
-# delle variabili ha effettivamente migliorato il modello.
-
 ```

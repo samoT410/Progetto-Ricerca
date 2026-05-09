@@ -311,10 +311,12 @@ Nel complesso, il grafico evidenzia una progressiva diversificazione delle desti
 il flusso era fortemente concentrato verso il Regno Unito, negli anni più recenti si osserva una distribuzione più 
 equilibrata tra più paesi europei, con una tendenza a privilegiare mete dell'Europa continentale rispetto a quella anglosassone. Questo cambiamento riflette probabilmente sia l'effetto strutturale della Brexit che una maggiore apertura dei mercati del lavoro dell'Europa continentale ai profili altamente qualificati.
 
-## Identificazione dei regressori per lo studio della fuga di cervelli
+# Identificazione dei regressori per lo studio della fuga di cervelli
 
-I regressori della variabile dipendente (fuga di cervelli) sono stati
-identificati in:
+I grafici che seguono mostrano l'andamento nel periodo 2013–2024 delle variabili utilizzate come regressori nel modello econometrico, per ciascuno degli undici paesi di destinazione considerati nell'analisi. L'obiettivo è verificare visivamente la presenza di trend e differenze strutturali tra i paesi, prima di procedere 
+con la stima formale.
+
+I regressori sono stati identificati in:
 
 \begin{itemize}
   \item Disuguaglianza all'interno del Paese (indice di Gini)
@@ -324,7 +326,8 @@ identificati in:
   \item Spesa del Paese per l'istruzione
 \end{itemize}
 
-# Analisi descrittiva dei regressori 
+## Analisi descrittiva dei regressori
+
 ```{r}
 library(tidyverse)
 
@@ -335,7 +338,7 @@ df_wb <- read.csv(
   na.strings  = c("..", "NA", "")
 )
 
-target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","CHN","BRA","BEL","ARG","IRL")
+target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","CHN","BRA","BEL","ARG","IRL",)
 
 # Pulizia e Formattazione (Includendo tutte le variabili trovate nel CSV)
 df_long_wb <- df_wb %>%
@@ -374,7 +377,7 @@ tema_slide <- theme_minimal(base_size = 10) +
   )
 ```
 
-## Grafici degli andamenti
+### Crescia PIL (DA SISTEMARE !!!)
 
 ```{r}
 # GDP Growth — Crescita del PIL (annual %)
@@ -399,39 +402,149 @@ df_long_wb %>%
   tema_slide
 ```
 
+### Educational Attainment
 
 ```{r}
-# Identifichiamo le variabili (esclusa la crescita del PIL)
-variabili_da_plottare <- df_long_wb %>% 
-  filter(`Series Name` != "GDP growth (annual %)") %>%
-  pull(`Series Name`) %>% 
-  unique()
+#| label: grafico-edu-attain
+#| fig-width: 9
+#| fig-height: 5
 
-# Creazione dei grafici tramite un ciclo
-for (var in variabili_da_plottare) {
-  
-  p <- df_long_wb %>%
-    filter(`Series Name` == var) %>%
-    ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
-    geom_line(linewidth = 1, alpha = 0.8) +
-    geom_point(size = 1.5) +
-    scale_color_manual(values = country_colors) +
-    # Usiamo str_wrap per evitare che i titoli lunghi escano dal grafico
-    labs(
-      title = str_wrap(var, width = 70),
-      subtitle = "Variazione annuale per paese (Dati World Bank)",
-      y = "Valore",
-      x = "Anno",
-      caption = "Grafico generato automaticamente"
-    ) +
-    tema_slide +
-    scale_x_continuous(breaks = seq(min(df_long_wb$Year), max(df_long_wb$Year), by = 2))
-  
-  # Visualizza il grafico
-  print(p)
-}
+df_long_wb %>%
+  filter(`Series Name` == "Educational attainment, at least completed lower secondary, population 25+, total (%) (cumulative)") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = country_colors) +
+  labs(
+    title    = str_wrap("Educational attainment, at least completed lower secondary, population 25+, total (%) (cumulative)", width = 70),
+    subtitle = "Variazione annuale per paese (Dati World Bank)",
+    y = "Valore", x = "Anno"
+  ) +
+  tema_slide +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2))
 ```
 
+Il grafico relativo al livello di istruzione — misurato come percentuale della popolazione over 25 con almeno la scuola 
+secondaria inferiore completata — mostra valori generalmente elevati e stabili per la maggior parte dei paesi considerati. 
+Germania, Regno Unito e Paesi Bassi si attestano stabilmente vicino al 100%, mentre Stati Uniti, Belgio e Francia si 
+collocano tra il 90% e il 95% per tutto il periodo.
+
+Il caso più interessante è quello del Brasile, che parte da un valore di circa 56% nel 2013 e cresce in modo costante 
+fino a sfiorare il 68% nel 2023, segnalando un processo di miglioramento strutturale del capitale umano ancora in 
+corso. La Spagna mostra anch'essa una crescita progressiva, partendo da circa 72% e avvicinandosi all'85% nel 2023.
+
+Nel complesso, la variabile presenta poca variabilità temporale per i paesi sviluppati, mentre risulta più 
+dinamica per i paesi emergenti inclusi nel campione.
+
+### Gini Index
+
+```{r}
+#| label: grafico-gini
+#| fig-width: 9
+#| fig-height: 5
+
+df_long_wb %>%
+  filter(`Series Name` == "Gini index") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = country_colors) +
+  labs(
+    title    = "Gini index",
+    subtitle = "Variazione annuale per paese (Dati World Bank)",
+    y = "Valore", x = "Anno"
+  ) +
+  tema_slide +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2))
+```
+
+L'indice di Gini, che misura il grado di disuguaglianza nella distribuzione del reddito, evidenzia differenze 
+strutturali marcate tra i paesi del campione. Il Brasile si distingue nettamente con valori compresi tra 50 e 54 
+per tutto il periodo, confermando la sua posizione tra i paesi con maggiore disuguaglianza a livello mondiale. 
+Seguono gli Stati Uniti, con un indice stabilmente intorno a 40–41, e la Spagna, che parte da circa 36 
+e mostra una lieve tendenza al ribasso nel tempo.
+
+I paesi dell'Europa continentale — Belgio, Germania, Francia e Paesi Bassi — si collocano tutti nella fascia 
+28–34, con andamenti sostanzialmente piatti nel periodo considerato, a indicare una struttura distributiva 
+relativamente stabile. L'Irlanda e il Regno Unito si posizionano in una fascia intermedia, attorno a 30–33.
+
+Da notare una lieve flessione generalizzata dell'indice nel 2020, probabilmente legata alle misure di sostegno 
+al reddito adottate durante la pandemia, seguita da una parziale risalita negli anni successivi.
+
+### Labor Force with Advanced Education
+
+```{r}
+#| label: grafico-labor-adv
+#| fig-width: 9
+#| fig-height: 5
+
+df_long_wb %>%
+  filter(`Series Name` == "Labor force with advanced education (% of total working-age population with advanced education)") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = country_colors) +
+  labs(
+    title    = str_wrap("Labor force with advanced education (% of total working-age population with advanced education)", width = 70),
+    subtitle = "Variazione annuale per paese (Dati World Bank)",
+    y = "Valore", x = "Anno"
+  ) +
+  tema_slide +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2))
+```
+
+La quota di forza lavoro con istruzione avanzata — espressa come percentuale della popolazione in età lavorativa —
+mostra valori elevati per tutti i paesi del campione, con differenze però significative tra di loro.
+
+Il Regno Unito si colloca stabilmente al vertice, con valori che superano l'85% nella parte finale del periodo, 
+seguito dai Paesi Bassi che mostrano una crescita progressiva fino a circa 85%. Irlanda e Brasile si 
+attestano anch'essi su livelli alti, intorno all'80–83%.
+
+Germania e Stati Uniti, per contro, presentano i valori più bassi del campione, stabili attorno al 73–74%, 
+con una leggera flessione nel biennio 2020–2021. Questo dato può sembrare controintuitivo per economie 
+ad alto reddito, ma riflette in parte differenze nella classificazione dei titoli di studio e nella 
+struttura del mercato del lavoro.
+
+Nel complesso la variabile è poco volatile nel tempo per ciascun paese, il che suggerisce che le differenze 
+tra paesi siano principalmente di natura strutturale.
+
+### Education Expenditure
+
+```{r}
+#| label: grafico-edu-exp
+#| fig-width: 9
+#| fig-height: 5
+
+df_long_wb %>%
+  filter(`Series Name` == "Current education expenditure, total (% of total expenditure in public institutions)") %>%
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = country_colors) +
+  labs(
+    title    = str_wrap("Current education expenditure, total (% of total expenditure in public institutions)", width = 70),
+    subtitle = "Variazione annuale per paese (Dati World Bank)",
+    y = "Valore", x = "Anno"
+  ) +
+  tema_slide +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2))
+```
+
+Il grafico sulla spesa corrente per l'istruzione — misurata come percentuale della spesa totale nelle istituzioni 
+pubbliche — mostra valori compresi in una fascia relativamente stretta per la maggior parte dei paesi, 
+tra circa 88% e 98%.
+
+I Paesi Bassi e il Regno Unito si collocano costantemente nella parte alta della distribuzione, 
+con valori stabili attorno al 97–98%. Belgio, Francia e Germania mostrano andamenti simili, con oscillazioni 
+contenute nel tempo.
+
+Il caso più anomalo è quello dell'Irlanda, che nel 2021 registra un picco improvviso al 100%, per poi rientrare 
+rapidamente sui valori precedenti. Questo salto è probabilmente riconducibile a una variazione nella 
+classificazione contabile delle spese piuttosto che a un reale cambiamento nella politica di bilancio.
+
+Il Brasile si mantiene costantemente nella parte bassa del grafico, con valori attorno all'88–89%, a conferma 
+di un sistema di istruzione pubblica strutturalmente meno dotato di risorse rispetto ai paesi europei 
+del campione.
 
 
 # Inferenza sui regressori - verifica presenza di trend nei Paesi

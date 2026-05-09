@@ -1,0 +1,277 @@
+---
+title: "Untitled"
+format: html
+---
+
+# Inferenza sui regressori - verifica presenza di trend nei Paesi
+
+
+```{=tex}
+
+Prima dell'analisi della fuga si vuole verificare se la variazione dei valori dei regressori sia significativa in ogni Paese. Per ogni paese e vraibile i modelli per la stima sono:
+
+
+\[ 
+X_{it} = \beta_{0i} + \beta_{1i} ANNO +\varepsilon_{i}
+\]
+
+\begin{quote}
+Con $\beta_{1i}$ come la variazione media annua della variabile X (regressore della fuga) nel Paese i 
+\end{quote}
+
+Attraverso il test $H_{0}: \beta_{1i} = 0$, si cerca la presenza di un trend nel Paese i per ogni variabile X
+```
+```{r}
+# Caricamento librerie necessarie
+library(tidyverse)
+library(broom)
+
+# 1. Caricamento dei dati
+# Assicurati che il file sia nella tua directory di lavoro
+df <- read_csv("regressori_list.csv")
+
+# 2. Pulizia e preparazione
+# Convertiamo 'Value' in numerico (gestendo i "NA") e 'Time' in intero
+df_clean <- df %>%
+  mutate(
+    Value = as.numeric(Value),
+    Time = as.numeric(Time)
+  ) %>%
+  filter(!is.na(Value)) # Rimuoviamo i valori mancanti per il calcolo del trend
+
+# Funzione per assegnare gli asterischi di significatività
+get_stars <- function(p) {
+  if (is.na(p)) return("")
+  if (p < 0.001) return("***")
+  if (p < 0.01)  return("**")
+  if (p < 0.05)  return("*")
+  if (p < 0.1)   return(".")
+  return("")
+}
+
+# 3. Elaborazione per ogni Variabile (Series Name)
+# Creiamo una lista di tabelle, una per ogni indicatore nel CSV
+risultati_finali <- df_clean %>%
+  group_by(`Series Name`, `Country Name`) %>%
+  # Eseguiamo la regressione lineare solo se abbiamo almeno 2 punti dati
+  filter(n() >= 2) %>%
+  do(tidy(lm(Value ~ Time, data = .))) %>%
+  # Ci interessa solo il coefficiente della variabile 'Time' (il trend)
+  filter(term == "Time") %>%
+  ungroup() %>%
+  mutate(
+    Significativita = sapply(p.value, get_stars)
+  ) %>%
+  select(
+    Variabile = `Series Name`,
+    Paese = `Country Name`,
+    `Variazione Media 2013-2024` = estimate,
+    `p-value (H0: Beta1=0)` = p.value,
+    `Signif.` = Significativita 
+  )
+```
+
+
+```{r}
+# Caricamento libreria per la formattazione professionale
+library(kableExtra)
+
+# Funzione di utilità per formattare velocemente le tabelle
+formatta_tabella <- function(data, titolo) {
+  data %>%
+    # Arrotondiamo i valori numerici per la leggibilità
+    mutate(across(where(is.numeric), ~ round(., 4))) %>%
+    # Creazione tabella
+    kbl(caption = titolo, booktabs = TRUE, align = "lcccc") %>%
+    kable_styling(
+      bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+      full_width = FALSE, 
+      position = "left"
+    ) %>%
+    column_spec(1, bold = TRUE, border_right = TRUE) %>%
+    # Evidenzia in verde i risultati significativi (p < 0.05)
+    column_spec(4, color = ifelse(data[[3]] < 0.05, "green", "black"))
+}
+
+# --- 1. Spesa per l'istruzione ---
+# Selezioniamo solo i primi 10 paesi o quelli significativi se troppi
+tab_spesa <- risultati_finali %>% 
+  filter(Variabile == unique(Variabile)[1]) %>%
+  select(-Variabile) %>%
+  slice_head(n = 12)
+
+# --- 2. Crescita del PIL ---
+tab_pil <- risultati_finali %>% 
+  filter(Variabile == unique(Variabile)[3]) %>% # Assicurati che l'indice sia corretto
+  select(-Variabile) %>%
+  slice_head(n = 12)
+
+# --- 3. Livello di istruzione ---
+tab_liv_istr <- risultati_finali %>% 
+  filter(Variabile == unique(Variabile)[2]) %>%
+  select(-Variabile) %>%
+  slice_head(n = 12)
+
+# --- 4. Forza lavoro qualificata ---
+tab_forza_lav <- risultati_finali %>% 
+  filter(Variabile == unique(Variabile)[5]) %>%
+  select(-Variabile) %>%
+  slice_head(n = 12)
+
+# --- 5. Disuguaglianza (Gini) ---
+tab_gini <- risultati_finali %>% 
+  filter(Variabile == unique(Variabile)[4]) %>%
+  select(-Variabile) %>%
+  slice_head(n = 12)
+
+```
+
+## Trend per variabile 'Spesa per l'istruzione'
+
+```{r}
+
+formatta_tabella(tab_spesa, "Trend Spesa per l'Istruzione (2013-2024)")
+```
+
+## Trend per variabile 'Crescita del PIL'
+
+```{r}
+formatta_tabella(tab_pil, "Trend Crescita del PIL")
+```
+
+## Trend per variabile 'Livello di istruzione'
+
+```{r}
+formatta_tabella(tab_liv_istr, "Trend Livello di Istruzione (Titoli Terziari)")
+```
+
+## Trend per variabile 'Forza lavoro con alto livello di istruzione'
+
+```{r}
+formatta_tabella(tab_forza_lav, "Trend Forza Lavoro con Alto Livello di Istruzione")
+```
+
+## Trend per variabile 'Disugualianza (Gini)'
+
+```{r}
+formatta_tabella(tab_gini, "Trend Indice di Gini (Disuguaglianza)")
+
+```
+
+# Inferenza sui regressori - test sulle medie per verifica di common trends
+```{=tex}
+\begin{center}
+
+Per validare la robustezza del set di dati, è stata analizzata la significatività delle medie annuali per ogni regressore. Il rifiuto dell'ipotesi nulla $H_0: \mu_t = 0$ conferma che le variabili esplicative della fuga rappresentano una componente strutturale, in generale in tutti i Paesi, nel periodo considerato, ponendo le basi per la successiva analisi
+
+\end{center}
+```
+# Tabella delle medie 
+```{r}
+library(tidyverse)
+library(broom)
+
+# 1. Funzione per gli asterischi
+get_stars <- function(p) {
+  if (is.na(p)) return("")
+  if (p < 0.001) return("***")
+  if (p < 0.01)  return("**")
+  if (p < 0.05)  return("*")
+  if (p < 0.1)   return(".")
+  return("")
+}
+
+# 2. Caricamento e pulizia (assicurati che il file sia nella cartella corretta)
+df <- read_csv("regressori_list.csv")
+
+df_clean <- df %>%
+  mutate(Value = as.numeric(Value)) %>%
+  filter(!is.na(Value))
+
+# 3. Calcolo dei test e formattazione
+tabella_risultati <- df_clean %>%
+  group_by(`Series Name`, Time) %>%
+  # Eseguiamo il test t (H0: media = 0)
+  do(tidy(t.test(.$Value, mu = 0))) %>%
+  ungroup() %>%
+  mutate(
+    # Creiamo la stringa "p-value (***)"
+    p_format = paste0(format.pval(p.value, digits = 3), " (", sapply(p.value, get_stars), ")"),
+    # Arrotondiamo la media per la colonna del valore
+    estimate = round(estimate, 3)
+  ) %>%
+  select(`Series Name`, Time, estimate, p_format) %>%
+  # Trasformiamo in formato largo (wide)
+  pivot_wider(
+    names_from = Time, 
+    values_from = c(estimate, p_format),
+    names_glue = "{.value}_{Time}"
+  )
+
+# 4. Riordino delle colonne per avere: Media_2013, P-value_2013, Media_2014, P-value_2014...
+# Prendiamo i nomi delle colonne tranne la prima (Series Name)
+cols <- colnames(tabella_risultati)[-1]
+# Le ordiniamo per anno (estraendo i numeri alla fine della stringa)
+anni <- str_extract(cols, "\\d+$") %>% unique() %>% sort()
+
+ordine_colonne <- c("Series Name")
+for(a in anni) {
+  ordine_colonne <- c(ordine_colonne, paste0("estimate_", a), paste0("p_format_", a))
+}
+
+tabella_finale <- tabella_risultati %>% select(all_of(ordine_colonne))
+
+# Rinominiamo le colonne per renderle pulite (opzionale)
+colnames(tabella_finale) <- gsub("estimate_", "Media ", colnames(tabella_finale))
+colnames(tabella_finale) <- gsub("p_format_", "p-value ", colnames(tabella_finale))
+
+tabella_finale[,1] <- c('Spesa Istruzione','Livello Istruzione','Crescita PIL','Disugualianza','Lavoratori istruiti') 
+
+library(kableExtra)
+
+# Definiamo i nomi delle colonne in modo pulito
+anni <- 2013:2024
+nomi_colonne <- c("Variabile", rep(c("Media", "p-value"), length(anni)))
+
+tabella_finale %>%
+  # Impostiamo i nomi delle colonne
+  setNames(nomi_colonne) %>%
+  kbl(
+    caption = "Analisi Statistica degli Indicatori (2013-2024)",
+    booktabs = TRUE,
+    align = "l"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    font_size = 10, # Leggermente più piccolo per far stare più dati
+    latex_options = c("striped", "hold_position", "scale_down")
+  ) %>%
+  # FIX ERRORE: border_right impostato su TRUE (logico)
+  column_spec(1, bold = TRUE, border_right = TRUE) %>%
+  # Raggruppamento anni nell'header
+  add_header_above(c(" " = 1, "2013" = 2, "2014" = 2, "2015" = 2, "2016" = 2, 
+                     "2017" = 2, "2018" = 2, "2019" = 2, "2020" = 2, 
+                     "2021" = 2, "2022" = 2, "2023" = 2, "2024" = 2)) %>%
+  # Estetica per i p-value (colonne pari dalla 3 in poi)
+  column_spec(seq(3, ncol(tabella_finale), by = 2), italic = TRUE, color = "#666666") %>%
+  # Scroll box solo per output HTML (rmarkdown lo ignora in PDF)
+  scroll_box(width = "100%", height = "400px")
+```
+
+# Modello di regressione esplicativo della fuga - struttura
+
+```{=tex}
+\[ 
+y_{it} = \alpha + \beta X_{it} + \mu_i + \lambda_t + \varepsilon_{it}
+\]
+
+\begin{itemize}
+\item $y_{it}$: flusso di migranti verso il Paese $i$ al tempo $t$
+\item $X_{it}$: variabile che al tempo $t$ influenza la fuga di cervelli verso il Paese $i$
+\item $\mu_i$: componente (costante nel tempo) non osservabile che influenza la fuga verso il Paese $i$ 
+\item $\lambda_t$: componente al tempo $t$ che influenza in generale la fuga di cervelli
+\item $\varepsilon_{it}$: componente casuale, non spiegata dal modello per ogni Paese $i$ al tempo $t$
+\end{itemize}
+```
+

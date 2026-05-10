@@ -1,5 +1,5 @@
 ---
-title: "Determinanti della Fuga di Cervelli Italiana: un'analisi a Dati Panel"
+title: "Determinanti della Fuga di Cervelli Italiani: un'analisi a Dati Panel"
 subtitle: "Gruppo G"
 author: "Shakira Nassih, Giulia Parentela, Stefano Soddu, Tomas Trebbi, Gaia Zanirato"
 date: last-modified
@@ -31,7 +31,7 @@ format:
 
 La fuga di cervelli è il fenomeno per cui persone altamente istruite, qualificate o con elevate competenze professionali lasciano il proprio paese (o regione) per trasferirsi altrove, generalmente alla ricerca di migliori opportunità lavorative, salariali, scientifiche o di qualità della vita.
 
-In termini economici e sociali, la fuga di cervelli comporta una perdita di capitale umano per il territorio di origine, poiché individui formati attraverso investimenti pubblici e privati contribuiscono poi alla crescita economica e innovativa di altri paesi. Una definizione più formale fornita della commissione europea è:
+In termini economici e sociali, la fuga di cervelli comporta una perdita di capitale umano per il territorio di origine, poiché individui formati attraverso investimenti pubblici e privati contribuiscono poi alla crescita economica e innovativa di altri paesi. Una definizione più formale è fornita della commissione europea:
 
 \begin{center}
 \begin{quote}
@@ -39,9 +39,9 @@ In termini economici e sociali, la fuga di cervelli comporta una perdita di capi
 \end{quote}
 \end{center}
 
-Il contesto italiano offre uno spaccato particolarmente interessante per analizzare questo fenomeno. Il mercato del lavoro italiano è storicamente caratterizzato da tassi di occupazione al di sotto della media europea, da una marcata dualità tra lavoro stabile e precario, e da una spesa pubblica in ricerca e istruzione che resta tra le più basse dell'Unione. A ciò si aggiunge una struttura salariale poco competitiva rispetto ai principali paesi di destinazione, soprattutto per i profili ad alta qualifica.
+Il contesto del nostro paese offre uno spaccato particolarmente interessante per analizzare questo fenomeno. Il mercato del lavoro italiano è storicamente caratterizzato da tassi di occupazione al di sotto della media europea, da una marcata dualità tra lavoro stabile e precario e da una spesa pubblica in ricerca e istruzione che resta tra le più basse dell'UE. A ciò si aggiunge una struttura salariale poco competitiva rispetto ai principali paesi di destinazione, soprattutto per i profili ad alta qualifica.
 
-In questa analisi ci concentreremo sui flussi di emigrazione degli italiani con alto livello di istruzione nel periodo 2013–2024, con l'obiettivo di descriverne l'evoluzione e di identificare, attraverso un modello econometrico a dati panel, i principali fattori che li determinano.
+In questa analisi ci concentreremo sui flussi di emigrazione degli italiani con alto livello di istruzione nel periodo 2013–2024, con l'obiettivo di descriverne l'evoluzione e di identificare, attraverso un modello panel, i principali fattori che li determinano.
 
 
 # Il caso italiano: analisi descrittiva dei flussi migratori
@@ -51,7 +51,7 @@ Prima di procedere con l'analisi, è utile osservare l'evoluzione del fenomeno a
 ## Tasso di occupazione
 
 ```{r}
-# Installa i pacchetti se non presenti
+
 if (!requireNamespace("readr",  quietly = TRUE)) install.packages("readr")
 if (!requireNamespace("dplyr",  quietly = TRUE)) install.packages("dplyr")
 if (!requireNamespace("tidyr",  quietly = TRUE)) install.packages("tidyr")
@@ -62,15 +62,12 @@ library(dplyr)
 library(tidyr)
 library(gt)
 
-# ── 1. Caricamento dati ───────────────────────────────────────
 df <- read_csv("occupazione_italia_vero2.csv",
                show_col_types = FALSE)
 
-# ── 2. Filtra solo l'Italia (prima riga / Country Code = ITA) ─
 italia <- df |>
   filter(`Country Code` == "ITA")
 
-# ── 3. Seleziona e riorganizza le colonne degli anni ──────────
 anni_cols <- names(italia)[grepl("\\[YR", names(italia))]
 
 italia_long <- italia |>
@@ -81,13 +78,12 @@ italia_long <- italia |>
     values_to = "Tasso (%)"
   ) |>
   mutate(
-    Anno      = sub(" \\[YR\\d+\\]", "", Anno),   # pulisce "2013 [YR2013]" → "2013"
+    Anno      = sub(" \\[YR\\d+\\]", "", Anno), 
     Anno      = as.integer(Anno),
     `Tasso (%)` = suppressWarnings(as.numeric(`Tasso (%)`))
   ) |>
-  filter(!is.na(`Tasso (%)`))   # rimuove anni senza dato
+  filter(!is.na(`Tasso (%)`))   
 
-# ── 4. Visualizza la tabella con {gt} ─────────────────────────
 tabella <- italia_long |>
   gt() |>
   tab_header(
@@ -104,7 +100,7 @@ tabella <- italia_long |>
   data_color(
     columns = `Tasso (%)`,
     method  = "numeric",
-    palette = c("#d4f1d4", "#f7a7a6")   # verde basso → rosso alto
+    palette = c("#f7a7a6","#d4f1d4")  
   ) |>
   tab_style(
     style = cell_text(color = "white", weight = "bold"),
@@ -116,11 +112,10 @@ tabella <- italia_long |>
   opt_table_font(font = "Arial") |>
   opt_row_striping()
 
-# Stampa la tabella nel PDF
 tabella
 ```
 
-Il tasso di occupazione italiano (popolazione 15+) mostra una crescita sostanzialmente continua nel periodo considerato, passando  dal 42,60% del 2013 al 46,37% del 2024. La progressione non è però lineare: dopo una fase di lenta risalita tra il 2013 e il 2019, si registra una flessione nel 2020 e 2021, riconducibile agli effetti della pandemia sul mercato del lavoro. Dal 2022 in poi la ripresa è più decisa, con il tasso che supera per la prima volta quota 46%.
+Il tasso di occupazione italiano (popolazione 15+) mostra una crescita sostanzialmente continua nel periodo considerato, passando  dal 42,60% del 2013 al 46,37% del 2024. La progressione non è però lineare: dopo una fase di lenta risalita tra il 2013 e il 2019, si registra una flessione nel 2020 e 2021, riconducibile agli effetti della pandemia sul mercato del lavoro. Dal 2022 in poi, la ripresa è più decisa, con il tasso che supera per la prima volta quota 46%.
 
 Va tuttavia sottolineato che, nonostante il miglioramento, i valori rimangono strutturalmente bassi rispetto alla media europea, il che contribuisce a rendere il mercato del lavoro italiano poco attrattivo per i profili ad alta qualifica.
 
@@ -169,10 +164,10 @@ p_iscritti <- ggplot(dati, aes(x = factor(anno), y = n)) +
     expand   = expansion(mult = c(0, 0))
   ) +
   labs(
-    title    = "Italiani con alta istruzione residenti all'estero – Totale",
+    title    = "Italiani con alta istruzione emigrati all'estero – Totale",
     caption  = "Fonte: ISTAT – Demo.istat.it, Tavola 12",
     x        = NULL,
-    y        = "Italiani residenti all'estero con alta istruzione"
+    y        = "Valore assoluto"
   ) +
   theme_minimal(base_size = 13) +
   theme(
@@ -269,7 +264,6 @@ p_paesi <- ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = pae
   ) +
   labs(
     title    = "Dove vanno gli italiani con alta istruzione",
-    subtitle = "Iscritti per trasferimento di residenza all'estero · Istruzione alta · per paese di destinazione",
     caption  = "Fonte: ISTAT – Demo.istat.it, Tavola 12 (2024 provvisorio)",
     x        = NULL,
     y        = "Numero di italiani emigrati con alta istruzione",
@@ -296,8 +290,7 @@ p_paesi
 
 Il grafico mostra la distribuzione dei flussi di emigrazione degli italiani con alto livello di istruzione verso i principali paesi di destinazione nel periodo 2013–2024, permettendo di cogliere sia le tendenze di lungo periodo che l'impatto di eventi specifici sulla mobilità qualificata.
 
-Il Regno Unito si conferma, per quasi tutto il periodo analizzato, la destinazione privilegiata degli italiani altamente istruiti. I flussi verso il paese crescono in modo sostenuto fino al 2019, anno in cui si raggiunge il picco massimo con circa 7.200 emigrati. È interessante notare che il referendum sulla Brexit del 2016 non 
-ha prodotto nell'immediato un effetto di rallentamento: al contrario, i flussi continuano a crescere nel biennio successivo, probabilmente per effetto di una corsa alla residenza prima che le nuove normative 
+Il Regno Unito si conferma, per quasi tutto il periodo analizzato, la destinazione privilegiata degli italiani altamente istruiti. I flussi verso il paese crescono in modo sostenuto fino al 2019, anno in cui si raggiunge il picco massimo con circa 7.200 emigrati. È interessante notare che il referendum sulla Brexit del 2016 non ha prodotto nell'immediato un effetto di rallentamento; al contrario, i flussi continuano a crescere nel biennio successivo, probabilmente per effetto di una corsa alla residenza prima che le nuove normative 
 entrassero in vigore. Il calo diventa evidente solo a partire dal 2020–2021, quando l'uscita effettiva del Regno Unito dall'Unione Europea ha reso concretamente più difficile il trasferimento, eliminando la libertà di circolazione per i cittadini europei. Dal 2022 in poi il flusso verso il Regno Unito si stabilizza su valori significativamente più bassi rispetto al picco pre-Brexit.
 
 Germania e Francia rappresentano le altre due destinazioni storicamente più rilevanti, con andamenti relativamente stabili nel tempo. La Germania mantiene flussi costanti attorno alle 3.000–4.000 unità annue, confermandosi come meta attrattiva soprattutto per profili tecnico-scientifici. La Francia mostra invece una crescita più marcata nella seconda parte del periodo, superando i 3.500 emigrati nel 2024.
@@ -308,14 +301,11 @@ Una possibile spiegazione risiede nella crescita del settore tecnologico spagnol
 Il biennio 2020–2021 rappresenta un'anomalia trasversale a tutte le destinazioni: i flussi calano in modo generalizzato per effetto delle restrizioni alla mobilità imposte dalla pandemia da COVID-19. 
 La ripresa dal 2022 in poi è però rapida e, per alcune destinazioni come Spagna e Francia, porta a valori superiori a quelli pre-pandemia.
 
-Nel complesso, il grafico evidenzia una progressiva diversificazione delle destinazioni nel tempo. Se fino al 2019 
-il flusso era fortemente concentrato verso il Regno Unito, negli anni più recenti si osserva una distribuzione più 
-equilibrata tra più paesi europei, con una tendenza a privilegiare mete dell'Europa continentale rispetto a quella anglosassone. Questo cambiamento riflette probabilmente sia l'effetto strutturale della Brexit che una maggiore apertura dei mercati del lavoro dell'Europa continentale ai profili altamente qualificati.
+Nel complesso, il grafico evidenzia una progressiva diversificazione delle destinazioni nel tempo. Se fino al 2019 il flusso era fortemente concentrato verso il Regno Unito, negli anni più recenti si osserva una distribuzione più equilibrata tra più paesi europei, con una tendenza a privilegiare mete dell'Europa continentale rispetto a quella anglosassone. Questo cambiamento riflette probabilmente sia l'effetto strutturale della Brexit che una maggiore apertura dei mercati del lavoro dell'Europa continentale ai profili altamente qualificati.
 
 # I determinanti della fuga di cervelli: selezione dei regressori
 
-I grafici che seguono mostrano l'andamento nel periodo 2013–2024 delle variabili utilizzate come regressori nel modello econometrico, per ciascuno degli undici paesi di destinazione considerati nell'analisi. L'obiettivo è verificare visivamente la presenza di trend e differenze strutturali tra i paesi, prima di procedere 
-con la stima formale.
+I grafici che seguono mostrano l'andamento nel periodo 2013–2024 delle variabili utilizzate come regressori nel modello , per ciascuno degli undici paesi di destinazione considerati nell'analisi. L'obiettivo è verificare visivamente la presenza di trend e differenze strutturali tra i paesi, prima di procedere con la stima formale.
 
 I regressori sono stati identificati in:
 
@@ -333,7 +323,7 @@ I regressori sono stati identificati in:
 if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
 library(tidyverse)
 
-# Caricamento dati
+
 df_wb <- read.csv(
   "regressori_list.csv",
   check.names = FALSE,
@@ -342,10 +332,10 @@ df_wb <- read.csv(
 
 target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","AUS","AUT","BRA","BEL","IRL","CHE")
 
-# Pulizia e Formattazione (Includendo tutte le variabili trovate nel CSV)
+
 df_long_wb <- df_wb %>%
   filter(`Country Code` %in% target_countries) %>%
-  # Selezioniamo tutte le serie rilevanti escludendo metadati del database
+  
   filter(!`Series Name` %in% c("Data from database: World Development Indicators", 
                                "Last Updated: 04/08/2026", 
                                NA)) %>%
@@ -355,7 +345,6 @@ df_long_wb <- df_wb %>%
   ) %>%
   filter(!is.na(Value), !is.na(Year))
 
-# Definizione colori e tema (come da tua richiesta)
 country_colors <- c(
   "USA" = "#E63946", "GBR" = "#457B9D", "ESP" = "#F4A261",
   "NLD" = "#2A9D8F", "DEU" = "#264653", "FRA" = "#E9C46A",
@@ -386,7 +375,7 @@ tema_slide <- theme_minimal(base_size = 10) +
 #| fig-width: 9
 #| fig-height: 5
 
-# Caricamento e pulizia
+
 df_gdp_cap <- read_csv("GDP_per_capita.csv",
                         show_col_types = FALSE) %>%
   filter(!is.na(`Country Code`), `Country Code` != "") %>%
@@ -399,7 +388,7 @@ df_gdp_cap <- read_csv("GDP_per_capita.csv",
   filter(`Country Code` %in% c("USA","GBR","ESP","NLD","DEU",
                                 "FRA","BRA","BEL","IRL", "CHE", "AUS", "AUT"))
 
-# Grafico
+
 ggplot(df_gdp_cap, aes(x = Year, y = Value, 
                         color = `Country Code`, 
                         group = `Country Code`)) +
@@ -424,19 +413,16 @@ ggplot(df_gdp_cap, aes(x = Year, y = Value,
 
 Il grafico mostra l'andamento del PIL pro capite a parità di potere d'acquisto (PPP) per i principali paesi di destinazione degli italiani altamente istruiti nel periodo 2013–2024.
 
-Il dato più evidente è quello dell'Irlanda, che si distacca nettamente da tutti gli altri paesi già a partire dal 2015, con una crescita quasi verticale che porta il valore da circa 49.000$ nel 2013 a oltre 130.000$ nel 2022. Questo andamento va però interpretato con cautela: il PIL pro capite irlandese è notoriamente distorto dalla presenza di grandi multinazionali che registrano i propri profitti in Irlanda per ragioni fiscali, gonfiando artificialmente l'aggregato nazionale. Il dato quindi non riflette necessariamente il tenore di vita reale della popolazione irlandese, e andrà tenuto presente in fase di interpretazione dei coefficienti del modello.
+Il dato più evidente è quello dell'Irlanda, che si distacca nettamente da tutti gli altri paesi già a partire dal 2015, con una crescita quasi verticale che porta il valore da circa 49.000$ nel 2013 a oltre 130.000$ nel 2022. Tuttavia, il PIL pro capite irlandese è notoriamente distorto dalla presenza di grandi multinazionali che registrano i propri profitti in Irlanda per ragioni fiscali, gonfiando artificialmente l'aggregato nazionale. Il dato quindi non riflette necessariamente il tenore di vita reale della popolazione irlandese.
 
 Tra i restanti paesi si osserva un gruppo di testa composto da Svizzera, Paesi Bassi e Stati Uniti, con valori compresi tra 60.000$ e 96.000$ nel 2024, in crescita costante per tutto il periodo. La Svizzera parte già da una base elevata (circa 62.000$ nel 2013) e mantiene una traiettoria di crescita regolare, mentre i Paesi Bassi mostrano un'accelerazione più marcata nella seconda metà del periodo.
 
 Germania, Belgio e Austria si collocano in una fascia intermedia, tra i 45.000$ e i 74.000$ nel 2024, con 
 andamenti simili e sostanzialmente paralleli. Regno Unito, Francia e Australia seguono a breve distanza, con traiettorie di crescita meno pronunciate ma comunque positive nel lungo periodo.
 
-Il Brasile si distingue per i valori strutturalmente più bassi del campione, stabili intorno ai 15.000–22.000$, 
-a conferma del divario di sviluppo rispetto ai paesi europei e anglofoni inclusi nell'analisi.
+Il Brasile si distingue per i valori strutturalmente più bassi del campione, stabili intorno ai 15.000–22.000$, a conferma del divario di sviluppo rispetto ai paesi europei e anglofoni inclusi nell'analisi.
 
-Nel complesso, il grafico evidenzia come tutti i principali paesi di destinazione degli italiani mostrino livelli di 
-reddito pro capite significativamente superiori a quelli italiani, fornendo una prima conferma descrittiva del ruolo 
-del differenziale di benessere economico come fattore attrattivo per l'emigrazione qualificata.
+Nel complesso, il grafico evidenzia come tutti i principali paesi di destinazione degli italiani mostrino livelli di reddito pro capite significativamente superiori a quelli italiani, fornendo una prima conferma descrittiva del ruolo del differenziale di benessere economico come fattore attrattivo per l'emigrazione qualificata.
 
 ## Educational Attainment
 
@@ -460,10 +446,7 @@ df_long_wb %>%
   scale_x_continuous(breaks = seq(2013, 2024, by = 2))
 ```
 
-Il grafico relativo al livello di istruzione, misurato come percentuale della popolazione over 25 con almeno la scuola 
-secondaria inferiore completata, mostra valori generalmente elevati e stabili per la maggior parte dei paesi considerati. 
-Germania, Regno Unito e Paesi Bassi si attestano stabilmente vicino al 100%, mentre Stati Uniti, Belgio e Francia si 
-collocano tra il 90% e il 95% per tutto il periodo.
+Il grafico relativo al livello di istruzione, misurato come percentuale della popolazione over 25 con almeno la scuola secondaria inferiore completata, mostra valori generalmente elevati e stabili per la maggior parte dei paesi considerati. Germania, Regno Unito e Paesi Bassi si attestano stabilmente vicino al 100%, mentre Stati Uniti, Belgio e Francia si collocano tra il 90% e il 95% per tutto il periodo.
 
 Il caso più interessante è quello del Brasile, che parte da un valore di circa 56% nel 2013 e cresce in modo costante 
 fino a sfiorare il 68% nel 2023, segnalando un processo di miglioramento strutturale del capitale umano ancora in 
@@ -488,7 +471,7 @@ df_long_wb %>%
   labs(
     title    = "Gini index",
     subtitle = "Variazione annuale per paese",
-    y = "Valore", x = "Anno", caption  = "Fonte: World Data Bank"
+    y = "Valore (0-100)", x = "Anno", caption  = "Fonte: World Data Bank"
   ) +
   tema_slide +
   scale_x_continuous(breaks = seq(2013, 2024, by = 2))
@@ -573,11 +556,10 @@ contenute nel tempo.
 
 Il caso più anomalo è quello dell'Irlanda, che nel 2021 registra un picco improvviso al 100%, per poi rientrare 
 rapidamente sui valori precedenti. Questo salto è probabilmente riconducibile a una variazione nella 
-classificazione contabile delle spese piuttosto che a un reale cambiamento nella politica di bilancio.
+classificazione contabile delle spese, piuttosto che a un reale cambiamento nella politica di bilancio.
 
 Il Brasile si mantiene costantemente nella parte bassa del grafico, con valori attorno all'88–89%, a conferma 
-di un sistema di istruzione pubblica strutturalmente meno dotato di risorse rispetto ai paesi europei 
-del campione.
+di un sistema di istruzione pubblica strutturalmente meno dotato di risorse rispetto ai paesi europei del campione.
 
 # Inferenza sui regressori - verifica presenza di trend nei Paesi
 
@@ -854,12 +836,7 @@ In sostanza, risulta che 'Disugualianza' e 'Lavoratori istruiti' siano i regress
 ```{=tex}
 \begin{flushleft}
 
-I dati a disposizione hanno una struttura panel, ovvero osservazioni 
-su più unità (i paesi di destinazione) ripetute nel tempo. 
-Questo tipo di dati permette di sfruttare sia la variabilità 
-tra paesi che quella all'interno dello stesso paese nel tempo, 
-offrendo più informazione rispetto a un semplice dataset 
-cross-sectional o a una serie storica.
+I dati a disposizione hanno una struttura panel, ovvero osservazioni su più unità (i paesi di destinazione) ripetute nel tempo. Questo tipo di dati permette di sfruttare sia la variabilità tra paesi che quella all'interno dello stesso paese nel tempo, offrendo più informazione rispetto a un semplice dataset cross-sectional o a una serie storica.
 
 Il modello di riferimento per dati di questo tipo è:
 
@@ -867,41 +844,27 @@ Il modello di riferimento per dati di questo tipo è:
 y_{it} = \alpha + \beta X_{it} + \mu_i + \varepsilon_{it}
 \]
 
-Il termine $\mu_i$ rappresenta tutto 
-ciò che è specifico di ciascuna unità e non varia nel tempo, 
-ma che comunque influenza la variabile dipendente. 
-In molti contesti empirici questa componente non è direttamente 
-osservabile o misurabile, e ignorarla porterebbe a stime distorte.
+Il termine $\mu_i$ rappresenta tutto ciò che è specifico di ciascuna unità e non varia nel tempo, ma che comunque influenza la variabile dipendente. In molti contesti empirici questa componente non è direttamente osservabile o misurabile, e ignorarla porterebbe a stime distorte.
 
- Il modello a effetti random considera $\mu_i$ come una variabilecasuale estratta da una 
-distribuzione, assumendo che non sia correlata con i regressori. 
-Il modello a effetti fissi invece non fa questa assunzione 
-e stima $\mu_i$ direttamente, eliminandolo attraverso 
-una trasformazione dei dati in scarti dalla media:
+ Il modello a effetti random considera $\mu_i$ come una variabilecasuale estratta da una distribuzione, assumendo che non sia correlata con i regressori. Il modello a effetti fissi invece non fa questa assunzione e stima $\mu_i$ direttamente, eliminandolo attraverso una trasformazione dei dati in scarti dalla media:
 
 \[
 (y_{it} - \bar{y}_i) = \beta(X_{it} - \bar{X}_i) + 
 (\varepsilon_{it} - \bar{\varepsilon}_i)
 \]
 
-Se l'assunzione del modello a effetti random è soddisfatta, 
-entrambi i modelli producono stime consistenti, ma quello 
-a effetti random è più efficiente. Se invece $\mu_i$ è 
-correlato con qualche regressore, solo il modello a effetti 
+Se l'assunzione del modello a effetti random è soddisfatta, entrambi i modelli producono stime consistenti, ma quello 
+a effetti random è più efficiente. Se invece $\mu_i$ è correlato con qualche regressore, solo il modello a effetti 
 fissi rimane consistente.
 
-Per decidere quale dei due utilizzare si ricorre al 
-\textbf{test di Hausman}, che verifica formalmente 
+Per decidere quale dei due utilizzare si ricorre al \textbf{test di Hausman}, che verifica formalmente 
 l'ipotesi nulla:
 
 \[
 H_0: \text{Cov}(\mu_i, X_{it}) = 0
 \]
 
-Se i due modelli producono 
-stime molto diverse tra loro, significa che l'assunzione 
-del modello a effetti random è probabilmente violata, 
-e conviene affidarsi a quello a effetti fissi.
+Se i due modelli producono stime molto diverse tra loro, significa che l'assunzione del modello a effetti random è probabilmente violata, e conviene affidarsi a quello a effetti fissi.
 
 \end{flushleft}
 ```
@@ -909,33 +872,29 @@ e conviene affidarsi a quello a effetti fissi.
 # Stima e risultati del modello
 
 ```{r, include = FALSE}
-# 1. Caricamento pacchetti necessari
+
 if (!require("plm")) install.packages("plm")
 if (!require("tidyverse")) install.packages("tidyverse")
 
 library(plm)
 library(tidyverse)
 
-# 2. Caricamento e pulizia dati
+
 df <- read.csv("dataset_unito.csv")
 
-# Creazione variabili dummy per eventi storici
+
 df <- df %>%
   mutate(
-    # Dummy Brexit: 1 per GBR dal 2016 (voto) o 2020 (uscita effettiva)
+
     brexit = if_else(Country.Code == "GBR" & Time >= 2016, 1, 0),
-    # Dummy COVID-19: impatto globale sulla mobilità 2020-2021
+    
     covid = if_else(Time %in% c(2020, 2021), 1, 0)
   )
 
-# Gestione valori mancanti (esempio: rimozione o interpolazione)
-# Il modello plm non accetta NA nelle variabili del modello
+
 df_clean <- df %>% drop_na(cancellazioni, gdp_per_capita, gini_index)
 
-# 3. Definizione della struttura Panel
-# 'index' specifica la dimensione individuale (Country) e temporale (Time)
 p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
-
 ```
 
 ```{r, echo = TRUE}
@@ -1044,10 +1003,9 @@ hausman <- phtest(modello_fe, modello_re)
 Il modello a effetti random include tutti i regressori identificati in fase di analisi descrittiva. Tra le variabili considerate, il PIL pro capite e l'indice di Gini mostrano una significatività 
 marginale (p-value rispettivamente 0.087 e 0.070), mentre la dummy Brexit risulta l'unica variabile fortemente significativa (p-value < 0.001). Le variabili relative alla forza lavoro istruita, alla spesa pubblica per l'istruzione e alla dummy COVID-19 non risultano statisticamente significative, suggerendo che il loro contributo esplicativo sia limitato una volta controllato per gli altri fattori. L'R² pari a 0.36 indica che il modello spiega circa un terzo della variabilità osservata nei flussi migratori.
 
-Il modello a effetti fissi produce risultati qualitativamente simili a quelli del modello a effetti random, con alcune differenze nei coefficienti stimati dovute alla diversa metodologia di stima. Il PIL pro capite risulta ora significativo al 5% (p-value 0.038), mentre l'indice di Gini 
-mantiene una significatività marginale. La dummy Brexit si conferma il regressore più robusto, con un coefficiente di circa 2.252 e p-value pressoché nullo. L'R² è pari a 0.34, in linea con il modello a effetti random.
+Il modello a effetti fissi produce risultati simili a quelli del modello a effetti random, con alcune differenze nei coefficienti stimati dovute alla diversa metodologia di stima. Il PIL pro capite risulta ora significativo al 5% (p-value 0.038), mentre l'indice di Gini mantiene una significatività marginale. La dummy Brexit si conferma il regressore più robusto, con un coefficiente di circa 2.252 e p-value pressoché nullo. L'R² è pari a 0.34, in linea con il modello a effetti random.
 
-Il test di Hausman restituisce un p-value pari a 0.90, ben al di sopra di qualsiasi soglia convenzionale di significatività. Questo significa che non si rifiuta l'ipotesi nulla di incorrelazione tra gli effetti 
+Il test di Hausman restituisce un p-value pari a 0.90, ben al di sopra della soglia convenzionale di significatività. Questo significa che non si rifiuta l'ipotesi nulla di incorrelazione tra gli effetti 
 individuali e i regressori: i due modelli producono stime sostanzialmente equivalenti, e il modello a 
 effetti random sarebbe teoricamente preferibile per la sua maggiore efficienza.
 
@@ -1057,7 +1015,6 @@ campione casuale estratto da una popolazione più ampia, ma un insieme seleziona
 concettualmente più appropriato.
 
 ```{r, include = FALSE}
-# Rimuoviamo eventuali NA nelle variabili che useremo nel modello
 df_clean <- df %>% drop_na(cancellazioni, gdp_per_capita, gini_index, ed_attain_low_sec)
 
 p_df <- pdata.frame(df_clean, index = c("Country.Code", "Time"))
@@ -1118,23 +1075,19 @@ a 0.33, solo marginalmente inferiore a quello del modello completo.
 
 Il PIL pro capite risulta significativo all'1% con un coefficiente positivo pari a 0.017: a parità 
 di altre condizioni, un paese più ricco attrae un maggior numero di emigrati italiani altamente 
-istruiti. L'indice di Gini mostra una significatività marginale (p-value 0.073) con coefficiente positivo, suggerendo che una maggiore disuguaglianza nel paese di destinazione non scoraggia la migrazione qualificata, probabilmente perché i profili ad alta istruzione si collocano nella parte alta della distribuzione salariale. Il livello di istruzione ha anch'esso un effetto positivo e marginalmente significativo (p-value 0.089), coerente con l'idea che paesi con un capitale umano più sviluppato offrano 
-ambienti lavorativi più attrattivi per i profili qualificati. Infine, la dummy Brexit conferma il proprio effetto dominante con un coefficiente di circa 2.401 e p-value pressoché nullo, a indicare che l'uscita del Regno Unito dall'Unione Europea ha prodotto un impatto strutturale e significativo sui flussi migratori verso quel paese.
+istruiti. L'indice di Gini mostra una significatività marginale (p-value 0.073) con coefficiente positivo, suggerendo che una maggiore disuguaglianza nel paese di destinazione non scoraggia la migrazione qualificata, probabilmente perché i profili ad alta istruzione si collocano nella parte alta della distribuzione salariale. Il livello di istruzione ha anch'esso un effetto positivo e marginalmente significativo (p-value 0.089), coerente con l'idea che paesi con un capitale umano più sviluppato offrano ambienti lavorativi più attrattivi per i profili qualificati. Infine, la dummy Brexit conferma il proprio effetto dominante con un coefficiente di circa 2.401 e p-value pressoché nullo, a indicare che l'uscita del Regno Unito dall'Unione Europea ha prodotto un impatto strutturale e significativo sui flussi migratori verso quel paese.
 
 # Conclusioni
 
-Questa analisi si è proposta di identificare e stimare i principali determinanti dell'emigrazione qualificata italiana nel periodo 2013–2024, attraverso un modello di regressione lineare a dati panel con effetti fissi.
+Questa analisi è stata realizzata per cercare di identificare e stimare i principali determinanti dell'emigrazione qualificata italiana nel periodo 2013–2024, attraverso un modello di regressione lineare a dati panel con effetti fissi.
 
-I risultati dell'analisi descrittiva mostrano con chiarezza che il fenomeno è in crescita strutturale: il numero di italiani con alto livello di istruzione che si trasferiscono all'estero è più che raddoppiato nel periodo considerato, passando da circa 19.500 unità nel 2013 a quasi 45.000 nel 2024. Nonostante il tasso di occupazione italiano sia migliorato nel corso degli anni, il mercato del lavoro nazionale non sembra essere riuscito a trattenere i profili nazionale non sembra essere riuscito a trattenere i profili più qualificati, che continuano a preferire destinazioni con maggiori opportunità retributive e professionali.
+I risultati dell'analisi descrittiva mostrano con chiarezza che il fenomeno è in crescita: il numero di italiani con alto livello di istruzione che si trasferiscono all'estero è più che raddoppiato nel periodo considerato. Nonostante il tasso di occupazione italiano sia migliorato nel corso degli anni, il mercato del lavoro nazionale non sembra essere riuscito a trattenere i profili più qualificati, che continuano a preferire destinazioni con maggiori opportunità retributive e professionali.
 
-Il modello a effetti fissi nella sua specificazione finale individua tre determinanti statisticamente significativi. Il PIL pro capite del paese di destinazione esercita un effetto positivo 
-e significativo sui flussi migratori: a parità di altre condizioni, i paesi economicamente più sviluppati 
-attraggono un numero maggiore di emigrati italiani altamente istruiti. L'indice di Gini e il livello 
-di istruzione mostrano anch'essi un effetto positivo, sebbene con una significatività marginale, suggerendo che i lavoratori qualificati tendano a dirigersi verso paesi con mercati del lavoro dinamici e competitivi, indipendentemente dal grado di disuguaglianza interna.
+Il modello a effetti fissi nella sua specificazione finale individua tre determinanti statisticamente significativi. Il PIL pro capite del paese di destinazione esercita un effetto positivo e significativo sui flussi migratori: a parità di altre condizioni, i paesi economicamente più sviluppati attraggono un numero maggiore di emigrati italiani altamente istruiti. L'indice di Gini e il livello di istruzione mostrano anch'essi un effetto positivo, sebbene con una significatività marginale, suggerendo che i lavoratori qualificati tendano a dirigersi verso paesi con mercati del lavoro dinamici e competitivi, indipendentemente dal grado di disuguaglianza interna.
 
 Il risultato più netto riguarda tuttavia la dummy Brexit: il coefficiente stimato è il più elevato in valore assoluto e fortemente significativo, confermando che l'uscita del Regno Unito dall'Unione Europea ha rappresentato uno shock strutturale di primaria importanza per i flussi migratori qualificati, ridisegnando in modo permanente la geografia delle destinazioni preferite dagli italiani.
 
-Alcune limitazioni dell'analisi meritano di essere segnalate. La disponibilità di dati completi per tutti 
+Si ritiene necessario riportare alcune limitazioni dell'analisi. La mancata disponibilità di dati completi per tutti 
 i regressori ha ridotto il campione effettivo, limitando la potenza statistica delle stime. Inoltre, il modello non cattura fattori di attrazione non economici — come la qualità della vita, le reti sociali o le politiche la qualità della vita, le reti sociali o le politiche di accoglienza — che potrebbero avere un peso rilevante nelle decisioni migratorie. Sviluppi futuri potrebbero includere variabili proxy per questi aspetti e ampliare il panel a un numero maggiore di paesi di destinazione. 
 
 

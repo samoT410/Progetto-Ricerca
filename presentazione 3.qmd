@@ -4,6 +4,8 @@ subtitle: "Gruppo G"
 author: "Shakira Nassih, Giulia Parentela, Stefano Soddu, Tomas Trebbi, Gaia Zanirato"
 date: last-modified
 lang: it
+bibliography: references.bib
+nocite: '@*'
 execute:
   echo: false
   warning: false
@@ -1090,4 +1092,4 @@ Il risultato più netto riguarda tuttavia la dummy Brexit: il coefficiente stima
 Si ritiene necessario riportare alcune limitazioni dell'analisi. La mancata disponibilità di dati completi per tutti 
 i regressori ha ridotto il campione effettivo, limitando la potenza statistica delle stime. Inoltre, il modello non cattura fattori di attrazione non economici — come la qualità della vita, le reti sociali o le politiche la qualità della vita, le reti sociali o le politiche di accoglienza — che potrebbero avere un peso rilevante nelle decisioni migratorie. Sviluppi futuri potrebbero includere variabili proxy per questi aspetti e ampliare il panel a un numero maggiore di paesi di destinazione. 
 
-
+# Bibliografia

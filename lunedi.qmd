@@ -112,6 +112,105 @@ prospects elsewhere.''} \\[2pt]
 \begin{center}
   \tiny\textit{Periodo analizzato: 2013–2024 · Focus: emigrazione con alto livello di istruzione}
 \end{center}
+
+## Tasso di Occupazione — Italia (2013–2024)
+
+\sectionbadge{ANALISI DESCRITTIVA}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 4.2
+#| out-width: "100%"
+
+if (!requireNamespace("readr",  quietly = TRUE)) install.packages("readr")
+if (!requireNamespace("dplyr",  quietly = TRUE)) install.packages("dplyr")
+if (!requireNamespace("tidyr",  quietly = TRUE)) install.packages("tidyr")
+if (!requireNamespace("ggplot2", quietly = TRUE)) install.packages("ggplot2")
+if (!requireNamespace("scales", quietly = TRUE)) install.packages("scales")
+
+library(readr); library(dplyr); library(tidyr); library(ggplot2); library(scales)
+
+df <- read_csv("occupazione_italia_vero2.csv", show_col_types = FALSE)
+italia <- df |> filter(`Country Code` == "ITA")
+anni_cols <- names(italia)[grepl("\\[YR", names(italia))]
+
+italia_long <- italia |>
+  select(all_of(anni_cols)) |>
+  pivot_longer(cols = everything(), names_to = "Anno", values_to = "Tasso") |>
+  mutate(
+    Anno  = as.integer(sub(" \\[YR\\d+\\]", "", Anno)),
+    Tasso = suppressWarnings(as.numeric(Tasso))
+  ) |>
+  filter(!is.na(Tasso)) |>
+  mutate(fase = case_when(
+    Anno %in% 2020:2021 ~ "COVID",
+    Anno %in% 2022:2024 ~ "Ripresa",
+    TRUE                ~ "Normale"
+  ))
+
+ggplot(italia_long, aes(x = factor(Anno), y = Tasso, fill = fase)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = sprintf("%.2f", Tasso)), vjust = -0.4, size = 2.6, color = "grey30") +
+  scale_fill_manual(values = c("Normale" = "#1a3a8f", "COVID" = "#C0392B", "Ripresa" = "#1a8f5a"),
+                    guide = guide_legend(title = NULL)) +
+  scale_y_continuous(limits = c(40, 48.5), oob = scales::rescale_none,
+                     labels = function(x) paste0(x, "%")) +
+  labs(title = "Tasso di Occupazione — Italia (2013–2024)",
+       caption = "Fonte: World Bank – Employment to population ratio, 15+, totale (%)",
+       x = NULL, y = "Tasso (%)") +
+  theme_minimal(base_size = 9) +
+  theme(legend.position = "bottom", plot.title = element_text(face = "bold", size = 10),
+        panel.grid.major.x = element_blank(), panel.grid.minor = element_blank(),
+        plot.caption = element_text(colour = "grey55", size = 7))
+```
+
+## Italiani con Alta Istruzione Residenti all'Estero
+
+\sectionbadge{ANALISI DESCRITTIVA}
+
+```{r}
+#| label: grafico-iscritti-totale
+#| fig-width: 9
+#| fig-height: 4.5
+#| out-width: "100%"
+
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("readxl", quietly = TRUE)) install.packages("readxl")
+if (!requireNamespace("scales", quietly = TRUE)) install.packages("scales")
+
+library(tidyverse); library(readxl); library(scales)
+
+percorso_file <- "tavola12_serie_istr.xlsx"
+raw <- read_excel(percorso_file, sheet = "Tavola12", col_names = FALSE)
+
+anni      <- 2013:2024
+cols_alto <- 2 + (seq_along(anni) - 1) * 4 + 2
+riga52    <- as.numeric(raw[52, cols_alto])
+
+dati <- tibble(anno = anni, n = riga52) |>
+  mutate(fase = case_when(
+    anno %in% 2020:2021 ~ "COVID",
+    anno %in% 2022:2024 ~ "Ripresa",
+    TRUE                ~ "Normale"
+  ))
+
+ggplot(dati, aes(x = factor(anno), y = n, fill = fase)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = label_number(big.mark = ".", decimal.mark = ",")(n)),
+            vjust = -0.4, size = 2.6, color = "grey30") +
+  scale_fill_manual(values = c("Normale" = "#378ADD", "COVID" = "#C0392B", "Ripresa" = "#1a8f5a"),
+                    guide = guide_legend(title = NULL)) +
+  scale_y_continuous(labels = label_number(big.mark = ".", decimal.mark = ","),
+                     limits = c(0, max(dati$n) * 1.13), expand = expansion(mult = c(0, 0))) +
+  labs(title = "Italiani con alta istruzione residenti all'estero — Totale",
+       caption = "Fonte: ISTAT – Demo.istat.it, Tavola 12",
+       x = NULL, y = "N. italiani con alta istruzione") +
+  theme_minimal(base_size = 9) +
+  theme(legend.position = "bottom", plot.title = element_text(face = "bold", size = 10),
+        panel.grid.major.x = element_blank(), panel.grid.minor = element_blank(),
+        plot.caption = element_text(colour = "grey55", size = 7))
+```
+
 ## Destinazioni Preferite degli Emigrati Italiani
 \sectionbadge{ANALISI DESCRITTIVA}
 ```{r}

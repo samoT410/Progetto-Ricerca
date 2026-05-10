@@ -1,0 +1,833 @@
+---
+title: "**Determinanti della Fuga di Cervelli Italiana**"
+subtitle: "Un'analisi a Dati Panel · 2013–2024"
+author:
+  - Shakira Nassih
+  - Giulia Parentela
+  - Stefano Soddu
+  - Tomas Trebbi
+  - Gaia Zanirato
+date: last-modified
+lang: it
+format:
+  beamer:
+    theme: Madrid
+    colortheme: default
+    fonttheme: structurebold
+    aspectratio: 169
+    toc: false
+    slide-level: 2
+    include-in-header:
+      text: |
+        % ── PALETTE ─────────────────────────────────────
+        \definecolor{bluScuro}{RGB}{26, 58, 143}
+        \definecolor{bluChiaro}{RGB}{214, 224, 247}
+        \definecolor{arancione}{RGB}{230, 126, 34}
+        \definecolor{grigio}{RGB}{75, 75, 75}
+        \definecolor{sfondoGrafico}{RGB}{244, 246, 252}
+        \definecolor{rosso}{RGB}{192, 57, 43}
+        \definecolor{verde}{RGB}{26, 143, 90}
+        
+        % ── COLORI TEMA ──────────────────────────────────
+        \setbeamercolor{frametitle}{bg=bluScuro, fg=white}
+        \setbeamercolor{title}{fg=white}
+        \setbeamercolor{subtitle}{fg=white}
+        \setbeamercolor{author}{fg=grigio}
+        \setbeamercolor{date}{fg=grigio}
+        \setbeamercolor{structure}{fg=bluScuro}
+        \setbeamercolor{block title}{bg=bluScuro, fg=white}
+        \setbeamercolor{block body}{bg=bluChiaro, fg=black}
+        \setbeamercolor{block title alerted}{bg=rosso, fg=white}
+        \setbeamercolor{block body alerted}{bg=bluChiaro!60, fg=black}
+        \setbeamercolor{block title example}{bg=verde!80!black, fg=white}
+        \setbeamercolor{block body example}{bg=bluChiaro!60, fg=black}
+        \setbeamercolor{itemize item}{fg=bluScuro}
+        \setbeamercolor{itemize subitem}{fg=arancione}
+        \setbeamercolor{normal text}{fg=black}
+        \setbeamercolor{background canvas}{bg=white}
+        
+        % ── FONT ─────────────────────────────────────────
+        \setbeamerfont{frametitle}{series=\bfseries, size=\large}
+        \setbeamerfont{title}{series=\bfseries, size=\Large}
+        \setbeamerfont{block title}{series=\bfseries}
+        
+        % ── FOOTLINE / HEADLINE ──────────────────────────
+        \setbeamertemplate{footline}[frame number]
+        \setbeamertemplate{headline}{}
+        \setbeamertemplate{navigation symbols}{}
+        
+        % ── BORDO TITOLO SLIDE ───────────────────────────
+        \setbeamertemplate{frametitle}{%
+          \nointerlineskip
+          \begin{beamercolorbox}[wd=\paperwidth, ht=0.55cm, dp=0.15cm, leftskip=0.4cm]{frametitle}
+            \usebeamerfont{frametitle}\insertframetitle
+          \end{beamercolorbox}
+        }
+        
+        % ── BADGE DI SEZIONE ─────────────────────────────
+        \newcommand{\sectionbadge}[1]{%
+          \begin{tikzpicture}
+            \node[fill=bluScuro, text=white, font=\tiny\bfseries,
+                  inner sep=3pt, rounded corners=1pt] {#1};
+          \end{tikzpicture}\vspace{0.1cm}
+        }
+        
+        % ── PACCHETTI EXTRA ──────────────────────────────
+        \usepackage{tikz}
+        \usepackage{pgfplots}
+        \pgfplotsset{compat=1.18}
+        \usepackage{booktabs}
+        \usepackage{colortbl}
+        \usepackage{array}
+        
+        % ── CAPTION ──────────────────────────────────────
+        \setbeamertemplate{caption}[numbered]
+        \setbeamerfont{caption}{size=\tiny, shape=\itshape}
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+## La Fuga di Cervelli: Definizione e Contesto
+
+\begin{beamercolorbox}[wd=\linewidth,sep=6pt,leftskip=2pt,rightskip=2pt]{block body}
+\textit{``Brain drain refers to the permanent emigration or outflow of skilled and
+talented individuals from their home regions to seek better opportunities and
+prospects elsewhere.''} \\[2pt]
+\hfill --- \textbf{European Commission, 2023}
+\end{beamercolorbox}
+
+\vspace{0.3cm}
+
+\textbf{\textcolor{bluScuro}{Perché l'Italia?}}
+
+\begin{itemize}
+  \item Tassi di occupazione storicamente inferiori alla media europea
+  \item Marcata dualità tra lavoro stabile e precario
+  \item Spesa pubblica in ricerca e istruzione tra le più basse dell'UE
+  \item Struttura salariale poco competitiva per i profili ad alta qualifica
+\end{itemize}
+
+\vspace{0.2cm}
+\begin{center}
+  \tiny\textit{Periodo analizzato: 2013–2024 · Focus: emigrazione con alto livello di istruzione}
+\end{center}
+## Destinazioni Preferite degli Emigrati Italiani
+\sectionbadge{ANALISI DESCRITTIVA}
+```{r}
+#| label: grafico-iscritti-paesi
+#| fig-width: 10
+#| fig-height: 5
+#| out-width: "100%"
+library(tidyverse); library(readxl); library(scales)
+percorso_file <- "tavola12_serie_istr.xlsx"
+raw <- read_excel(percorso_file, sheet = "Tavola12", col_names = FALSE)
+anni <- 2013:2024
+riga_iscrizioni    <- which(apply(raw, 1, function(r) any(grepl("^ISCRIZIONI$",    r, ignore.case = TRUE))))
+riga_cancellazioni <- which(apply(raw, 1, function(r) any(grepl("^CANCELLAZIONI$", r, ignore.case = TRUE))))
+estrai_sezione <- function(df, riga_inizio, riga_fine = nrow(df)) {
+  blocco <- df[(riga_inizio + 1):(riga_fine - 1), ]
+  blocco <- blocco[!grepl("^totale$", blocco[[1]], ignore.case = TRUE), ]
+  blocco <- blocco[!is.na(blocco[[1]]) & nchar(trimws(blocco[[1]])) > 0, ]
+  paesi <- trimws(blocco[[1]])
+  alto_cols <- 2 + (seq_along(anni) - 1) * 4 + 2
+  mat <- blocco[, alto_cols, drop = FALSE]
+  mat <- mutate_all(as.data.frame(mat), as.numeric)
+  colnames(mat) <- anni
+  mat$paese <- paesi
+  pivot_longer(mat, cols = -paese, names_to = "anno", values_to = "n") |>
+    mutate(anno = as.integer(anno)) |>
+    filter(!is.na(n))
+}
+riga_sep      <- riga_cancellazioni - 2
+cancellazioni <- estrai_sezione(raw, riga_cancellazioni, riga_fine = nrow(raw)) |> mutate(tipo = "Cancellazioni")
+top_paesi <- cancellazioni |>
+  group_by(paese) |>
+  summarise(totale = sum(n, na.rm = TRUE)) |>
+  filter(!grepl("altri|totale", paese, ignore.case = TRUE)) |>
+  slice_max(totale, n = 12) |>
+  pull(paese)
+dati_filt <- cancellazioni |>
+  filter(paese %in% top_paesi) |>
+  mutate(paese = factor(paese, levels = top_paesi))
+n_paesi <- length(top_paesi)
+country_colors <- c("#378ADD","#D85A30","#1D9E75","#D4537E","#BA7517","#7F77DD",
+                    "#C0C0C0","#dfe44f","#ff7f00","#9467bd","#8c564b","#e377c2")[seq_len(n_paesi)]
+palette <- setNames(country_colors, top_paesi)
+tipi_linea <- setNames(rep(c("solid","dashed","dotted"), length.out = n_paesi), top_paesi)
+ggplot(dati_filt, aes(x = anno, y = n, colour = paese, linetype = paese)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2.2) +
+  annotate("rect", xmin = 2019.5, xmax = 2021.5, ymin = -Inf, ymax = Inf, fill = "#d90429", alpha = 0.06) +
+  annotate("text", x = 2020.5, y = max(dati_filt$n, na.rm = TRUE) * 0.97,
+           label = "Covid-19", size = 3, colour = "#d90429", fontface = "bold") +
+  annotate("rect", xmin = 2016.5, xmax = 2019.5, ymin = -Inf, ymax = Inf, fill = "#00247D", alpha = 0.04) +
+  annotate("text", x = 2018.5, y = max(dati_filt$n, na.rm = TRUE) * 0.97,
+           label = "Brexit", size = 3, colour = "#00247D", fontface = "bold") +
+  scale_colour_manual(values = palette) +
+  scale_linetype_manual(values = tipi_linea) +
+  scale_x_continuous(breaks = 2013:2024) +
+  scale_y_continuous(labels = label_number(big.mark = ".", decimal.mark = ","),
+                     limits = c(0, NA), expand = expansion(mult = c(0, 0.06))) +
+  labs(title = "Dove vanno gli italiani con alta istruzione",
+       subtitle = "Cancellazioni per paese di destinazione · Istruzione alta",
+       caption = "Fonte: ISTAT – Demo.istat.it, Tavola 12 (2024 provvisorio)",
+       x = NULL, y = "N. emigrati con alta istruzione", colour = NULL, linetype = NULL) +
+  theme_minimal(base_size = 9) +
+  theme(legend.position = "bottom", legend.key.width = unit(1.4, "cm"),
+        plot.title = element_text(face = "bold", size = 10),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(colour = "grey55", size = 7)) +
+  guides(colour = guide_legend(nrow = 2), linetype = guide_legend(nrow = 2))
+```
+
+## GDP per Capita, PPP — Paesi di Destinazione
+\sectionbadge{REGRESSORI}
+```{r}
+#| label: grafico-gdp-capita
+#| fig-width: 9
+#| fig-height: 4.5
+#| out-width: "100%"
+library(tidyverse); library(scales)
+country_colors <- c(
+  "USA" = "#E63946", "GBR" = "#457B9D", "ESP" = "#F4A261",
+  "NLD" = "#2A9D8F", "DEU" = "#264653", "FRA" = "#E9C46A",
+  "AUS" = "#C0392B", "AUT" = "#27AE60", "BRA" = "#8E44AD",
+  "BEL" = "#1ABC9C", "IRL" = "#D35400", "CHE" = "#2C3E50"
+)
+df_gdp_cap <- read_csv("GDP_per_capita.csv", show_col_types = FALSE) |>
+  filter(!is.na(`Country Code`), `Country Code` != "",
+         !grepl("^Data from|^Last Updated", `Series Name`)) |>
+  mutate(Year = as.integer(Time), Value = as.numeric(Value)) |>
+  filter(!is.na(Value), !is.na(Year)) |>
+  filter(`Country Code` %in% c("USA","GBR","ESP","NLD","DEU","FRA","BRA","BEL","IRL","CHE","AUS","AUT"))
+ggplot(df_gdp_cap, aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 1, alpha = 0.85) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = country_colors) +
+  scale_y_continuous(labels = label_number(big.mark = ".", decimal.mark = ",", suffix = " $")) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(title = "GDP per capita, PPP (current international $)",
+       subtitle = "Variazione annuale per paese di destinazione",
+       y = "Valore", x = NULL,
+       caption = "Fonte: World Data Bank", color = NULL) +
+  theme_minimal(base_size = 9) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 7),
+        plot.title = element_text(face = "bold", size = 10),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(colour = "grey55", size = 7))
+```
+
+## Educational Attainment — Pop. 25+ con Almeno Secondaria Inf.
+\sectionbadge{REGRESSORI}
+```{r}
+#| label: grafico-edu-attain
+#| fig-width: 9
+#| fig-height: 4.5
+#| out-width: "100%"
+library(tidyverse)
+target_countries <- c("USA","GBR","ESP","NLD","DEU","FRA","AUS","AUT","BRA","BEL","IRL","CHE")
+country_colors <- c(
+  "USA" = "#E63946", "GBR" = "#457B9D", "ESP" = "#F4A261",
+  "NLD" = "#2A9D8F", "DEU" = "#264653", "FRA" = "#E9C46A",
+  "AUS" = "#C0392B", "AUT" = "#27AE60", "BRA" = "#8E44AD",
+  "BEL" = "#1ABC9C", "IRL" = "#D35400", "CHE" = "#2C3E50"
+)
+df_wb <- read.csv("regressori_list.csv", check.names = FALSE, na.strings = c("..", "NA", "")) |>
+  filter(`Country Code` %in% target_countries,
+         !`Series Name` %in% c("Data from database: World Development Indicators", NA)) |>
+  mutate(Year = as.integer(`Time`), Value = as.numeric(`Value`)) |>
+  filter(!is.na(Value), !is.na(Year))
+df_wb |>
+  filter(`Series Name` == "Educational attainment, at least completed lower secondary, population 25+, total (%) (cumulative)") |>
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 1, alpha = 0.85) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(title = "Educational attainment — Pop. 25+ con almeno secondaria inf. (%)",
+       subtitle = "Variazione annuale per paese",
+       y = "Valore (%)", x = NULL,
+       caption = "Fonte: World Data Bank", color = NULL) +
+  theme_minimal(base_size = 9) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 7),
+        plot.title = element_text(face = "bold", size = 10),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(colour = "grey55", size = 7))
+```
+
+## Indice di Gini — Disuguaglianza nel Reddito
+\sectionbadge{REGRESSORI}
+```{r}
+#| label: grafico-gini
+#| fig-width: 9
+#| fig-height: 4.5
+#| out-width: "100%"
+df_wb |>
+  filter(`Series Name` == "Gini index") |>
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 1, alpha = 0.85) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(title = "Indice di Gini — Disuguaglianza nel reddito",
+       subtitle = "Variazione annuale per paese",
+       y = "Indice di Gini", x = NULL,
+       caption = "Fonte: World Data Bank", color = NULL) +
+  theme_minimal(base_size = 9) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 7),
+        plot.title = element_text(face = "bold", size = 10),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(colour = "grey55", size = 7))
+```
+
+## Forza Lavoro con Istruzione Avanzata
+\sectionbadge{REGRESSORI}
+```{r}
+#| label: grafico-labor-adv
+#| fig-width: 9
+#| fig-height: 4.5
+#| out-width: "100%"
+df_wb |>
+  filter(`Series Name` == "Labor force with advanced education (% of total working-age population with advanced education)") |>
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 1, alpha = 0.85) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(title = "Forza lavoro con istruzione avanzata (% pop. in età lavorativa)",
+       subtitle = "Variazione annuale per paese",
+       y = "Valore (%)", x = NULL,
+       caption = "Fonte: World Data Bank", color = NULL) +
+  theme_minimal(base_size = 9) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 7),
+        plot.title = element_text(face = "bold", size = 10),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(colour = "grey55", size = 7))
+```
+
+## Spesa Corrente per l'Istruzione
+\sectionbadge{REGRESSORI}
+```{r}
+#| label: grafico-edu-exp
+#| fig-width: 9
+#| fig-height: 4.5
+#| out-width: "100%"
+df_wb |>
+  filter(`Series Name` == "Current education expenditure, total (% of total expenditure in public institutions)") |>
+  ggplot(aes(x = Year, y = Value, color = `Country Code`, group = `Country Code`)) +
+  geom_line(linewidth = 1, alpha = 0.85) +
+  geom_point(size = 1.5) +
+  scale_color_manual(values = country_colors) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+  labs(title = "Spesa corrente per l'istruzione (% spesa totale ist. pubbliche)",
+       subtitle = "Variazione annuale per paese",
+       y = "Valore (%)", x = NULL,
+       caption = "Fonte: World Data Bank", color = NULL) +
+  theme_minimal(base_size = 9) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 7),
+        plot.title = element_text(face = "bold", size = 10),
+        panel.grid.minor = element_blank(),
+        plot.caption = element_text(colour = "grey55", size = 7))
+```
+
+## Verifica di Trend nei Paesi — Specificazione
+\sectionbadge{INFERENZA SUI REGRESSORI}
+
+```{r}
+#| label: setup-inferenza
+#| include: false
+if (!require("broom",      quietly = TRUE)) install.packages("broom")
+if (!require("knitr",      quietly = TRUE)) install.packages("knitr")
+if (!require("kableExtra", quietly = TRUE)) install.packages("kableExtra")
+library(tidyverse); library(broom); library(knitr); library(kableExtra)
+
+paese_label <- c(
+  "AUS" = "Australia",      "AUT" = "Austria",
+  "BEL" = "Belgium",        "BRA" = "Brazil",
+  "CHE" = "Switzerland",    "DEU" = "Germany",
+  "ESP" = "Spain",          "FRA" = "France",
+  "GBR" = "United Kingdom", "IRL" = "Ireland",
+  "NLD" = "Netherlands",    "USA" = "United States"
+)
+
+stars <- function(p) {
+  case_when(p < 0.001 ~ "***", p < 0.01 ~ "**", p < 0.05 ~ "*",
+            p < 0.1   ~ ".",   TRUE      ~ "")
+}
+fmt <- function(x, digits = 4) formatC(x, digits = digits, format = "f")
+
+run_trends <- function(series_name) {
+  df_wb |>
+    filter(`Series Name` == series_name) |>
+    group_by(`Country Code`) |>
+    group_modify(~ {
+      mod <- lm(Value ~ Year, data = .x)
+      tidy(mod) |> filter(term == "Year") |> select(estimate, p.value)
+    }) |>
+    ungroup() |>
+    mutate(
+      Paese              = paese_label[`Country Code`],
+      `Var. media annua` = fmt(estimate),
+      `p-value`          = paste0(fmt(p.value, 4), " ", stars(p.value)),
+      .sig_pos           = p.value < 0.1 & estimate > 0,
+      .sig_neg           = p.value < 0.1 & estimate < 0
+    ) |>
+    select(Paese, `Var. media annua`, `p-value`, .sig_pos, .sig_neg) |>
+    arrange(Paese)
+}
+
+kbl_trend <- function(df, caption_text) {
+  tab <- df |> select(Paese, `Var. media annua`, `p-value`)
+  tab |>
+    kbl(
+      format   = "latex",
+      booktabs = TRUE,
+      linesep  = "",
+      align    = "lcc",
+      caption  = caption_text
+    ) |>
+    add_header_above(
+      c(" " = 1, "$H_0\\colon \\beta_1 = 0$" = 2),
+      bold = TRUE, color = "white", background = "#1a3a8f", escape = FALSE
+    ) |>
+    row_spec(0, bold = TRUE, color = "white", background = "#1a3a8f") |>
+    row_spec(which(df$.sig_pos), bold = TRUE, color = "#1a8f5a") |>
+    row_spec(which(df$.sig_neg), bold = TRUE, color = "#C0392B") |>
+    row_spec(c(2, 4, 6, 8, 10, 12), background = "#dce8f7") |>
+    column_spec(1, width = "3.2cm") |>
+    kable_styling(
+      latex_options = c("hold_position", "scale_down"),
+      font_size = 7
+    )
+}
+```
+
+\begin{beamercolorbox}[wd=\linewidth,sep=5pt]{block body}
+\centering\small
+Modello di regressione per serie storiche — ogni paese trattato indipendentemente:
+\[
+X_{it} = \beta_{0i} + \beta_{1i}\,\texttt{ANNO} + \varepsilon_i \qquad
+H_0\colon \beta_{1i} = 0
+\]
+\end{beamercolorbox}
+\vspace{0.2cm}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{\textbf{Lettura delle tabelle seguenti}}
+{\small \textcolor{verde}{Verde} $\to$ trend \textbf{crescente} significativo\\
+\textcolor{rosso}{Rosso} $\to$ trend \textbf{decrescente} significativo\\
+Nero $\to$ nessun trend rilevato}
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{alertblock}{\textbf{Rilevanza per il modello}}
+{\small Un trend significativo indica che quel paese ha modificato \textbf{strutturalmente} la propria attrattività per i migranti qualificati nel periodo analizzato.}
+\end{alertblock}
+\end{column}
+\end{columns}
+
+## Trend — Spesa per l'Istruzione e Crescita del PIL
+\sectionbadge{INFERENZA SUI REGRESSORI}
+\begin{columns}[T]
+\begin{column}{0.42\textwidth}
+```{r}
+#| label: trend-edu-exp
+#| results: asis
+run_trends(
+  "Current education expenditure, total (% of total expenditure in public institutions)"
+) |>
+  kbl_trend("Trend Spesa per l'Istruzione (2013--2022)")
+```
+\vspace{-0.2cm}
+{\tiny\setlength{\baselineskip}{0.72\baselineskip}
+I soli valori significativi sono \textbf{negativi}: evidenza di disinvestimento sistematico nell'istruzione pubblica nelle principali economie avanzate.}
+\end{column}
+\begin{column}{0.42\textwidth}
+```{r}
+#| label: trend-gdp-growth
+#| results: asis
+run_trends("GDP growth (annual %)") |>
+  kbl_trend("Trend Crescita del PIL (2013--2024)")
+```
+\vspace{-0.15cm}
+{\tiny\setlength{\baselineskip}{0.72\baselineskip}
+Nessun trend lineare significativo: la crescita del PIL è risultata \textbf{stazionaria o volatile}, con lo shock della pandemia 2020 che ne ha interrotto qualsiasi direzione.}
+\end{column}
+\end{columns}
+
+## Trend — Livello di Istruzione e Forza Lavoro Qualificata
+\sectionbadge{INFERENZA SUI REGRESSORI}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+```{r}
+#| label: trend-edu-attain-inf
+#| results: asis
+run_trends(
+  "Educational attainment, at least completed lower secondary, population 25+, total (%) (cumulative)"
+) |>
+  kbl_trend("Trend Livello di Istruzione (2013--2024)")
+```
+\vspace{-0.15cm}
+{\tiny\setlength{\baselineskip}{0.72\baselineskip}
+Trend più robusto dell'intera analisi: il capitale umano qualificato è \textbf{cresciuto linearmente} in quasi tutti i paesi.}
+\end{column}
+\begin{column}{0.48\textwidth}
+```{r}
+#| label: trend-labor-adv
+#| results: asis
+run_trends(
+  "Labor force with advanced education (% of total working-age population with advanced education)"
+) |>
+  kbl_trend("Trend Forza Lavoro Qualificata (2013--2024)")
+```
+\vspace{-0.15cm}
+{\tiny\setlength{\baselineskip}{0.72\baselineskip}
+In molti paesi la quota di \textbf{occupati} qualificati è in calo: possibile segnale di \textit{skill mismatch} o invecchiamento della forza lavoro.}
+\end{column}
+\end{columns}
+
+## Trend — Indice di Gini
+\sectionbadge{INFERENZA SUI REGRESSORI}
+\begin{columns}[T]
+\begin{column}{0.50\textwidth}
+```{r}
+#| label: trend-gini-inf
+#| results: asis
+run_trends("Gini index") |>
+  kbl_trend("Trend Indice di Gini -- Disuguaglianza (2013--2024)")
+```
+\end{column}
+\begin{column}{0.46\textwidth}
+\vspace{0.2cm}
+\begin{block}{\textbf{Paesi con Gini in calo}}
+{\small Europa periferica (Spagna, Irlanda) e continentale (Belgio, Francia): \textbf{convergenza distributiva} nel decennio post-crisi.}
+\end{block}
+\vspace{0.15cm}
+\begin{alertblock}{\textbf{Paesi con Gini in aumento}}
+{\small Economie \textit{core}: Germania e Svizzera mostrano un aumento della forbice sociale. Gli USA mostrano coefficiente piatto ($p \approx 0.99$): l'alta disuguaglianza è rimasta stabile.}
+\end{alertblock}
+\end{column}
+\end{columns}
+
+## Test sulle Medie — Verifica di Common Trends
+\sectionbadge{INFERENZA SUI REGRESSORI}
+
+\begin{beamercolorbox}[wd=\linewidth,sep=4pt]{block body}
+\centering\small
+Test $H_0\colon \mu_t = 0$ — media cross-paese del regressore all'anno $t$.
+\textit{Alta significatività} $\Rightarrow$ il regressore è un fattore strutturale stabile, non rumore casuale.
+\end{beamercolorbox}
+\vspace{0.1cm}
+```{r}
+#| label: test-medie
+#| results: asis
+
+series_map <- c(
+  "Spesa Istruzione"    = "Current education expenditure, total (% of total expenditure in public institutions)",
+  "Livello Istruzione"  = "Educational attainment, at least completed lower secondary, population 25+, total (%) (cumulative)",
+  "Disuguaglianza"      = "Gini index",
+  "Lavoratori istruiti" = "Labor force with advanced education (% of total working-age population with advanced education)"
+)
+
+anni_sel <- 2013:2022
+
+medie_rows <- lapply(names(series_map), function(nm) {
+  df_wb |>
+    filter(`Series Name` == series_map[nm], Year %in% anni_sel) |>
+    group_by(Year) |>
+    summarise(
+      media   = round(mean(Value, na.rm = TRUE), 3),
+      pval    = tryCatch(t.test(Value[!is.na(Value)])$p.value, error = function(e) NA_real_),
+      .groups = "drop"
+    ) |>
+    mutate(
+      Variabile = nm,
+      Cella     = paste0(format(media, nsmall = 1), "  ", stars(pval))
+    ) |>
+    select(Variabile, Year, Cella)
+}) |> bind_rows()
+
+tab_wide <- medie_rows |>
+  pivot_wider(names_from = Year, values_from = Cella, names_prefix = "Y")
+
+anni_nomi <- as.character(anni_sel)
+
+tab_wide |>
+  kbl(
+    format    = "latex",
+    booktabs  = TRUE,
+    linesep   = "",
+    align     = paste0("l", strrep("c", length(anni_sel))),
+    col.names = c("Variabile", anni_nomi),
+    caption   = "Media cross-paese per anno --- test $H_0\\colon \\mu_t = 0$",
+    escape    = FALSE
+  ) |>
+  add_header_above(
+    c(" " = 1, "Anno" = length(anni_sel)),
+    bold = TRUE, color = "white", background = "#1a3a8f"
+  ) |>
+  row_spec(0, bold = TRUE, color = "white", background = "#1a3a8f") |>
+  row_spec(c(2, 4), background = "#dce8f7") |>
+  column_spec(1, bold = TRUE, width = "3.0cm") |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size = 6
+  )
+```
+\vspace{0.05cm}
+{\scriptsize \textbf{Disuguaglianza} e \textbf{Lavoratori istruiti}: p-value sistematicamente $< 2\!\times\!10^{-16}$ $\Rightarrow$ componenti strutturali stabili. Il PIL fluttua (pandemia 2020); la Spesa Istruzione non ha dati dopo il 2022.}
+
+## Specificazione del Modello a Dati Panel
+\sectionbadge{MODELLO ECONOMETRICO}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\begin{block}{\textbf{Effetti Fissi (FE)}}
+Elimina $\mu_i$ tramite trasformazione \textit{within}:
+\[
+(y_{it} - \bar{y}_i) = \beta(X_{it} - \bar{X}_i) + (\varepsilon_{it} - \bar{\varepsilon}_i)
+\]
+Consistente anche se $\text{Cov}(\mu_i, X_{it}) \neq 0$.
+\end{block}
+\end{column}
+\begin{column}{0.48\textwidth}
+\begin{block}{\textbf{Effetti Random (RE)}}
+Tratta $\mu_i$ come variabile casuale estratta da una distribuzione. Richiede:
+\[
+\text{Cov}(\mu_i, X_{it}) = 0
+\]
+Più efficiente se l'assunzione è soddisfatta.
+\end{block}
+\end{column}
+\end{columns}
+\vspace{0.3cm}
+\begin{beamercolorbox}[wd=\linewidth,sep=5pt]{block body}
+\centering\textbf{Modello di riferimento:} \quad
+$y_{it} = \alpha + \beta X_{it} + \mu_i + \varepsilon_{it}$
+\end{beamercolorbox}
+\vspace{0.2cm}
+\begin{alertblock}{\textbf{Test di Hausman} — $H_0: \text{Cov}(\mu_i, X_{it}) = 0$}
+Se $H_0$ non è rifiutata, RE è più efficiente. Se invece $\mu_i$ è correlato con i regressori, solo FE rimane consistente.
+\end{alertblock}
+
+## Risultati: Effetti Random vs Effetti Fissi
+\sectionbadge{RISULTATI}
+```{r}
+#| label: tabella-re-fe
+#| results: asis
+if (!require("plm",         quietly = TRUE)) install.packages("plm")
+if (!require("tidyverse",   quietly = TRUE)) install.packages("tidyverse")
+if (!require("broom",       quietly = TRUE)) install.packages("broom")
+if (!require("knitr",       quietly = TRUE)) install.packages("knitr")
+if (!require("kableExtra",  quietly = TRUE)) install.packages("kableExtra")
+library(plm); library(tidyverse); library(broom); library(knitr); library(kableExtra)
+df <- read.csv("dataset_unito.csv") |>
+  mutate(
+    brexit = if_else(Country.Code == "GBR" & Time >= 2016, 1, 0),
+    covid  = if_else(Time %in% c(2020, 2021), 1, 0)
+  ) |>
+  drop_na(cancellazioni, gdp_per_capita, gini_index, ed_attain_low_sec,
+          labor_adv_edu, edu_exp_public)
+p_df <- pdata.frame(df, index = c("Country.Code", "Time"))
+mod_re <- plm(cancellazioni ~ gdp_per_capita + gini_index +
+              ed_attain_low_sec + labor_adv_edu + edu_exp_public +
+              brexit + covid,
+              data = p_df, model = "random")
+mod_fe <- plm(cancellazioni ~ gdp_per_capita + gini_index +
+              ed_attain_low_sec + labor_adv_edu + edu_exp_public +
+              brexit + covid,
+              data = p_df, model = "within")
+hausman_p <- phtest(mod_fe, mod_re)$p.value
+label_map <- c(
+  "gdp_per_capita"    = "PIL pro capite",
+  "gini_index"        = "Indice di Gini",
+  "ed_attain_low_sec" = "Livello istruzione",
+  "labor_adv_edu"     = "Forza lav. istruita",
+  "edu_exp_public"    = "Spesa istruzione",
+  "brexit"            = "Brexit (dummy)",
+  "covid"             = "COVID-19 (dummy)"
+)
+stars <- function(p) {
+  case_when(p < 0.001 ~ "***", p < 0.01 ~ "**", p < 0.05 ~ "*",
+            p < 0.1   ~ ".",   TRUE      ~ "")
+}
+fmt <- function(x, digits = 4) formatC(x, digits = digits, format = "f")
+re_tidy <- tidy(mod_re) |> filter(term != "(Intercept)")
+fe_tidy <- tidy(mod_fe)
+tab <- re_tidy |>
+  left_join(fe_tidy, by = "term", suffix = c("_re", "_fe")) |>
+  mutate(
+    Variabile  = label_map[term],
+    `Coeff. RE` = fmt(estimate_re),
+    `p RE`      = paste0(fmt(p.value_re, 3), " ", stars(p.value_re)),
+    `Coeff. FE` = fmt(estimate_fe),
+    `p FE`      = paste0(fmt(p.value_fe, 3), " ", stars(p.value_fe)),
+    bold_row    = term == "brexit"
+  ) |>
+  select(Variabile, `Coeff. RE`, `p RE`, `Coeff. FE`, `p FE`, bold_row)
+r2_re <- round(summary(mod_re)$r.squared[1], 3)
+r2_fe <- round(summary(mod_fe)$r.squared[1], 3)
+tab |>
+  select(-bold_row) |>
+  kbl(
+    format    = "latex",
+    booktabs  = TRUE,
+    linesep   = "",
+    align     = "lcccc",
+    col.names = c("Variabile", "Coeff.", "p-value", "Coeff.", "p-value"),
+    caption   = paste0("RE ($R^2=", r2_re, "$) vs FE ($R^2=", r2_fe, "$)")
+  ) |>
+  add_header_above(
+    c(" " = 1, "Effetti Random" = 2, "Effetti Fissi" = 2),
+    bold = TRUE, color = "white", background = "#1a3a8f"
+  ) |>
+  row_spec(0, bold = TRUE, color = "white", background = "#1a3a8f") |>
+  row_spec(which(tab$bold_row), bold = TRUE, color = "#1a3a8f") |>
+  row_spec(c(2, 4, 6), background = "#dce8f7") |>
+  column_spec(1, bold = FALSE, width = "3.5cm") |>
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size = 6
+  )
+```
+\vspace{0.04cm}
+\begin{beamercolorbox}[wd=\linewidth,sep=4pt]{block body}
+\centering\scriptsize
+\textbf{Test di Hausman} $\to$
+```{r}
+#| results: asis
+cat(sprintf("p-value $= %.2f$", hausman_p))
+```
+$\to$ Non si rifiuta $H_0$ $\to$ Stime equivalenti $\to$ \textbf{Si sceglie FE per robustezza concettuale}
+\end{beamercolorbox}
+\vspace{0.03cm}
+\begin{columns}[T]
+\begin{column}{0.32\textwidth}
+{\tiny\setlength{\baselineskip}{0.70\baselineskip}
+\textbf{\textcolor{bluScuro}{PIL pro capite}} significativo al 5\% nel FE. Paesi più ricchi attraggono più emigrati qualificati.
+}
+\end{column}
+\begin{column}{0.32\textwidth}
+{\tiny\setlength{\baselineskip}{0.70\baselineskip}
+\textbf{\textcolor{bluScuro}{Indice di Gini}} effetto positivo marginalmente significativo (p $\approx$ 0.07): la disuguaglianza non scoraggia chi si colloca in cima alla distribuzione.
+}
+\end{column}
+\begin{column}{0.32\textwidth}
+{\tiny\setlength{\baselineskip}{0.70\baselineskip}
+\textbf{\textcolor{bluScuro}{Brexit}} coefficiente dominante e fortemente significativo (***) in entrambi i modelli: shock strutturale permanente sui flussi verso il Regno Unito.
+}
+\end{column}
+\end{columns}
+
+## Modello Finale — Effetti Fissi
+\sectionbadge{MODELLO FINALE}
+\begin{columns}[T]
+\begin{column}{0.68\textwidth}
+```{r}
+#| label: modello-finale
+#| results: asis
+p_df_fin <- pdata.frame(
+  df |> drop_na(cancellazioni, gdp_per_capita, gini_index, ed_attain_low_sec),
+  index = c("Country.Code", "Time")
+)
+mod_fin <- plm(cancellazioni ~ gdp_per_capita + gini_index + ed_attain_low_sec + brexit,
+               data = p_df_fin, model = "within")
+r2_fin  <- round(summary(mod_fin)$r.squared[1], 3)
+cf      <- tidy(mod_fin)
+get_coef <- function(term_name) {
+  cf |> filter(term == term_name) |> pull(estimate) |> round(4)
+}
+get_p <- function(term_name) {
+  cf |> filter(term == term_name) |> pull(p.value) |> round(3)
+}
+label_map2 <- c(
+  "gdp_per_capita"    = "PIL pro capite",
+  "gini_index"        = "Indice di Gini",
+  "ed_attain_low_sec" = "Livello istruzione",
+  "brexit"            = "Brexit (dummy)"
+)
+cf |>
+  mutate(
+    Variabile = label_map2[term],
+    Coeff     = fmt(estimate),
+    `p-value` = paste0(fmt(p.value, 3), " ", stars(p.value))
+  ) |>
+  select(Variabile, Coeff, `p-value`) |>
+  kbl(
+    format    = "latex",
+    booktabs  = TRUE,
+    linesep   = "",
+    align     = "lcc"
+  ) |>
+  row_spec(0, bold = TRUE, color = "white", background = "#1a3a8f") |>
+  row_spec(which(cf$term == "brexit"), bold = TRUE, color = "#1a3a8f") |>
+  row_spec(c(2, 4), background = "#dce8f7") |>
+  column_spec(1, width = "4.5cm") |>
+  kable_styling(latex_options = c("hold_position"), font_size = 8)
+```
+\end{column}
+\begin{column}{0.20\textwidth}
+{\scriptsize\setlength{\baselineskip}{0.9\baselineskip}
+\textbf{Tabella 2: Modello FE finale — $R^2 = `r r2_fin`$}
+}
+\end{column}
+\end{columns}
+
+\vspace{-0.032cm}
+\begin{columns}[T]
+\begin{column}{0.42\textwidth}
+\begin{block}{\textbf{\textcolor{white}{PIL pro capite}} — p < 0.01 **}
+{\footnotesize\setlength{\baselineskip}{0.82\baselineskip}
+Effetto positivo e significativo: i paesi più ricchi attraggono più emigrati qualificati italiani, a parità di altre condizioni.}
+\end{block}
+\vspace{-0.032cm}
+\begin{block}{\textbf{\textcolor{white}{Indice di Gini}} — p $\approx$ 0.07 .}
+{\footnotesize\setlength{\baselineskip}{0.82\baselineskip}
+Effetto positivo marginale: la disuguaglianza non scoraggia chi si posiziona in cima alla distribuzione salariale.}
+\end{block}
+\end{column}
+\begin{column}{0.42\textwidth}
+\begin{block}{\textbf{\textcolor{white}{Livello di istruzione}} — p $\approx$ 0.09 .}
+{\footnotesize\setlength{\baselineskip}{0.82\baselineskip}
+Paesi con capitale umano più sviluppato offrono ambienti lavorativi più attrattivi per i profili qualificati.}
+\end{block}
+\vspace{-0.032cm}
+\begin{alertblock}{\textbf{Brexit (dummy)} — p < 0.001 ***}
+{\footnotesize\setlength{\baselineskip}{0.82\baselineskip}
+Variabile dominante: l'uscita del UK dall'UE ha prodotto uno shock strutturale permanente sui flussi migratori.}
+\end{alertblock}
+\end{column}
+\end{columns}
+
+# Conclusioni
+
+## Conclusioni e Limitazioni
+\sectionbadge{CONCLUSIONI}
+\begin{columns}[T]
+\begin{column}{0.54\textwidth}
+\textbf{\textcolor{bluScuro}{Principali risultati}}
+\begin{itemize}
+  \item \textbf{+130\%} di emigrati altamente istruiti tra 2013 e 2024 (19.5k $\to$ 44.7k)
+  \item \textbf{PIL pro capite}: effetto attrattivo positivo e significativo (p < 0.01)
+  \item \textbf{Indice di Gini}: alta disuguaglianza non scoraggia l'emigrazione qualificata
+  \item \textbf{Brexit}: variabile di gran lunga più robusta del modello (p < 0.001)
+  \item Il mercato del lavoro italiano non riesce a trattenere i profili qualificati nonostante il miglioramento del tasso di occupazione
+\end{itemize}
+\end{column}
+\begin{column}{0.44\textwidth}
+\begin{block}{\textbf{Limitazioni}}
+\begin{itemize}
+  \item Dati mancanti riducono il campione effettivo
+  \item Non cattura fattori non economici (qualità vita, reti sociali, politiche di accoglienza)
+\end{itemize}
+\end{block}
+\vspace{0.2cm}
+\begin{exampleblock}{\textbf{Sviluppi Futuri}}
+\begin{itemize}
+  \item Variabili proxy per qualità della vita e reti sociali
+  \item Ampliare il panel a un maggior numero di paesi di destinazione
+\end{itemize}
+\end{exampleblock}
+\end{column}
+\end{columns}
